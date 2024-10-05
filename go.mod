@@ -1,3 +1,3 @@
-module github.com/WeIsWeAre/collector-metrics
+module github.com/WeIsWeAre/main
 
 go 1.22.0
