@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -13,10 +12,7 @@ const metrics string = "gauge|counter"
 const acceptedContentType string = "text/plain"
 
 func DefaultHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("Serving:", r.URL.Path, "from", r.Host)
-	w.WriteHeader(http.StatusOK)
-	Body := "Default\n"
-	fmt.Fprintf(w, "%s", Body)
+	w.WriteHeader(http.StatusNotFound)
 }
 
 func GetMetricHandler(w http.ResponseWriter, r *http.Request) {
@@ -26,7 +22,7 @@ func GetMetricHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method != http.MethodPost { // в middleware ?
+	if !isMethodPost(r.Method) { // в middleware ?
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -49,6 +45,14 @@ func GetMetricHandler(w http.ResponseWriter, r *http.Request) {
 	Body := "OK\n"
 	fmt.Fprintf(w, "%s", Body)
 
+}
+
+func isMethodPost(method string) bool {
+	if method == http.MethodPost {
+		return true
+	} else {
+		return false
+	}
 }
 
 func isValidContentType(contentType string) bool {
@@ -122,20 +126,3 @@ func isValidMeticValue(metricValue string, metricType string) bool {
 		return false
 	}
 }
-
-/*func MetricGaugeHandler(w http.ResponseWriter, r *http.Request) {
-
-	if r.Method != http.MethodPost { // в middleware ?
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
-}
-
-func MetricCounterHandler(w http.ResponseWriter, r *http.Request) {
-
-	if r.Method != http.MethodPost { // в middleware ?
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-}*/
