@@ -21,28 +21,26 @@ const reportInterval int = 10
 const minRandomValue float64 = 1.0
 const maxRandomValue float64 = 999.0
 
-type myData struct {
+type responseData struct {
 	r   *http.Response
 	err error
+	url string
 }
 
 var wg sync.WaitGroup
 var m models.Monitor
-var dataChannel chan myData
+var dataChannel chan responseData
 var gauges []models.Gauge
 var counters map[string]models.Counter
 
 func main() {
 
 	initialization()
-
 	wg.Add(1)
 	go collectMetrics()
 	wg.Add(1)
 	go sendMetrics()
-
 	wg.Wait()
-	fmt.Println("Exiting...")
 }
 
 func collectMetrics() {
@@ -50,57 +48,39 @@ func collectMetrics() {
 	defer wg.Done()
 
 	channelCancel := make(chan os.Signal, 1)
-	signal.Notify(channelCancel, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(channelCancel, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 
 	for {
-
 		select {
-
 		case <-channelCancel:
-
-			fmt.Println("Exit")
-			break
-
+			return
 		case <-time.After(time.Duration(pollInterval) * time.Second):
-
-			fmt.Println("Сбор метрик начало")
-
+			fmt.Println("begin get metrics")
 			setValuesMonitor()
-
-			fmt.Println("Сбор метрик конец")
+			fmt.Println("end get metrics")
 		}
 	}
-
 }
 
 func sendMetrics() {
 
 	defer wg.Done()
-
 	channelCancel := make(chan os.Signal, 1)
-	signal.Notify(channelCancel, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(channelCancel, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 
 	for {
-
 		select {
-
 		case <-channelCancel:
-
-			fmt.Println("Exit")
-			break
-
+			return
 		case <-time.After(time.Duration(reportInterval) * time.Second):
-
-			doReqSendMetrics()
-
+			go doReqSendMetrics()
 		case answer := <-dataChannel:
-
 			parseAnswer(&answer)
 		}
 	}
 }
 
-func parseAnswer(answer *myData) {
+func parseAnswer(answer *responseData) {
 
 	err := answer.err
 	resp := answer.r
@@ -108,18 +88,18 @@ func parseAnswer(answer *myData) {
 		fmt.Println("Error select:", err)
 	}
 	defer resp.Body.Close()
-
-	realHTTPData, err := io.ReadAll(resp.Body)
+	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("Error select:", err)
+		fmt.Println("Error read data:", responseBody)
+		fmt.Println("Error read data:", err)
 	}
-
-	fmt.Printf("Server Response: %s\n", realHTTPData)
-
+	//fmt.Println("Server Response: %s\n", responseBody)
+	fmt.Println("----------------------------", answer.url)
 }
 
 func doReqSendMetrics() {
 
+	fmt.Println("begin send metrics")
 	tmp_url := url + "/update/" + "counter/"
 	for _, metric := range counters {
 		sendMetricEndpoint(tmp_url + metric.Name + "/" + fmt.Sprintf("%v", metric.Value))
@@ -128,6 +108,7 @@ func doReqSendMetrics() {
 	for _, metric := range gauges {
 		sendMetricEndpoint(tmp_url + metric.Name + "/" + fmt.Sprintf("%f", metric.Value))
 	}
+	fmt.Println("end send metrics")
 }
 
 func sendMetricEndpoint(endpoint string) {
@@ -137,57 +118,34 @@ func sendMetricEndpoint(endpoint string) {
 	httpClient := &http.Client{Transport: tr}
 	response, err := httpClient.Do(req)
 	if err != nil {
-		dataChannel <- myData{nil, err}
+		dataChannel <- responseData{nil, err, endpoint}
 	} else {
-		pack := myData{response, err}
+		pack := responseData{response, err, endpoint}
 		dataChannel <- pack
 	}
 }
 
 func initialization() {
 
+	rand.Seed(time.Now().Unix())
 	m.Init()
+	dataChannel = make(chan responseData, 2)
+}
 
-	dataChannel = make(chan myData, 1)
-
-	counters = make(map[string]models.Counter, 1)
-	counters["PollCount"] = m.PollCount
-
-	gauges = make([]models.Gauge, 27)
-	gauges = append(gauges, m.Alloc)
-
-	gauges = append(gauges, m.BuckHashSys)
-	gauges = append(gauges, m.Frees)
-	gauges = append(gauges, m.GCCPUFraction)
-	gauges = append(gauges, m.GCSys)
-	gauges = append(gauges, m.HeapAlloc)
-	gauges = append(gauges, m.HeapIdle)
-	gauges = append(gauges, m.HeapInuse)
-	gauges = append(gauges, m.HeapObjects)
-	gauges = append(gauges, m.HeapReleased)
-	gauges = append(gauges, m.HeapSys)
-	gauges = append(gauges, m.LastGC)
-	gauges = append(gauges, m.Lookups)
-	gauges = append(gauges, m.MCacheInuse)
-	gauges = append(gauges, m.MCacheSys)
-	gauges = append(gauges, m.MSpanInuse)
-	gauges = append(gauges, m.MSpanSys)
-	gauges = append(gauges, m.Mallocs)
-	gauges = append(gauges, m.NextGC)
-	gauges = append(gauges, m.NumForcedGC)
-	gauges = append(gauges, m.NumGC)
-	gauges = append(gauges, m.OtherSys)
-	gauges = append(gauges, m.PauseTotalNs)
-	gauges = append(gauges, m.StackInuse)
-	gauges = append(gauges, m.StackSys)
-	gauges = append(gauges, m.Sys)
-	gauges = append(gauges, m.TotalAlloc)
-	gauges = append(gauges, m.RandomValue)
+func randomF64(min, max float64) float64 {
+	return min + rand.Float64()*(max-min)
 }
 
 func setValuesMonitor() {
 
 	var rtm runtime.MemStats
+	runtime.ReadMemStats(&rtm)
+
+	m.PollCount.Value += 1
+	counters = make(map[string]models.Counter, 1)
+	counters["PollCount"] = m.PollCount
+
+	gauges = make([]models.Gauge, 0, 27)
 
 	m.Alloc.Value = float64(rtm.Alloc)
 	m.BuckHashSys.Value = float64(rtm.BuckHashSys)
@@ -216,10 +174,34 @@ func setValuesMonitor() {
 	m.StackSys.Value = float64(rtm.StackSys)
 	m.Sys.Value = float64(rtm.Sys)
 	m.TotalAlloc.Value = float64(rtm.TotalAlloc)
+	m.RandomValue.Value = randomF64(minRandomValue, maxRandomValue)
 
-	rand.Seed(time.Now().Unix())
-
-	m.Sys.Value += 1
-	m.TotalAlloc.Value = randomF64(minRandomValue, maxRandomValue)
-
+	gauges = append(gauges, m.Alloc)
+	gauges = append(gauges, m.BuckHashSys)
+	gauges = append(gauges, m.Frees)
+	gauges = append(gauges, m.GCCPUFraction)
+	gauges = append(gauges, m.GCSys)
+	gauges = append(gauges, m.HeapAlloc)
+	gauges = append(gauges, m.HeapIdle)
+	gauges = append(gauges, m.HeapInuse)
+	gauges = append(gauges, m.HeapObjects)
+	gauges = append(gauges, m.HeapReleased)
+	gauges = append(gauges, m.HeapSys)
+	gauges = append(gauges, m.LastGC)
+	gauges = append(gauges, m.Lookups)
+	gauges = append(gauges, m.MCacheInuse)
+	gauges = append(gauges, m.MCacheSys)
+	gauges = append(gauges, m.MSpanInuse)
+	gauges = append(gauges, m.MSpanSys)
+	gauges = append(gauges, m.Mallocs)
+	gauges = append(gauges, m.NextGC)
+	gauges = append(gauges, m.NumForcedGC)
+	gauges = append(gauges, m.NumGC)
+	gauges = append(gauges, m.OtherSys)
+	gauges = append(gauges, m.PauseTotalNs)
+	gauges = append(gauges, m.StackInuse)
+	gauges = append(gauges, m.StackSys)
+	gauges = append(gauges, m.Sys)
+	gauges = append(gauges, m.TotalAlloc)
+	gauges = append(gauges, m.RandomValue)
 }
