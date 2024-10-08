@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"service"
 	"strconv"
 )
 
@@ -11,7 +12,27 @@ const PORT string = ":8080"
 const metrics string = "gauge|counter"
 const acceptedContentType string = "text/plain"
 
+type metricHandler struct {
+	serv service.Service
+}
+
+func NewMetricHandler(serv service.Service) *metricHandler {
+	return &metricHandler{serv: serv}
+}
+
 func DefaultHandler(w http.ResponseWriter, r *http.Request) {
+
+	temp_service := &service.MetricService{}
+	handler := NewMetricHandler(temp_service)
+	shortURL, err := handler.serv.GetMetric("без разницы что передаем")
+	fmt.Println(shortURL)
+	fmt.Println(err)
+
+	/*if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}*/
+
 	w.WriteHeader(http.StatusNotFound)
 }
 
