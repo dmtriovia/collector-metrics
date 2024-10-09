@@ -54,9 +54,7 @@ func collectMetrics() {
 		case <-channelCancel:
 			return
 		case <-time.After(time.Duration(pollInterval) * time.Second):
-			fmt.Println("begin get metrics")
 			setValuesMonitor()
-			fmt.Println("end get metrics")
 		}
 	}
 }
@@ -73,8 +71,8 @@ func sendMetrics() {
 			return
 		case <-time.After(time.Duration(reportInterval) * time.Second):
 			go doReqSendMetrics()
-		case answer := <-dataChannel:
-			parseAnswer(&answer)
+			//case answer := <-dataChannel:
+			//	parseAnswer(&answer)
 		}
 	}
 }
@@ -97,7 +95,6 @@ func parseAnswer(answer *responseData) {
 
 func doReqSendMetrics() {
 
-	fmt.Println("begin send metrics")
 	tmp_url := url + "/update/" + "counter/"
 	for _, metric := range counters {
 		sendMetricEndpoint(tmp_url + metric.Name + "/" + fmt.Sprintf("%v", metric.Value))
@@ -106,7 +103,6 @@ func doReqSendMetrics() {
 	for _, metric := range gauges {
 		sendMetricEndpoint(tmp_url + metric.Name + "/" + fmt.Sprintf("%f", metric.Value))
 	}
-	fmt.Println("end send metrics")
 }
 
 func sendMetricEndpoint(endpoint string) {
@@ -114,20 +110,22 @@ func sendMetricEndpoint(endpoint string) {
 	req.Header.Set("Content-Type", contentTypeSendMetric)
 	tr := &http.Transport{}
 	httpClient := &http.Client{Transport: tr}
-	response, err := httpClient.Do(req)
-	if err != nil {
+	httpClient.Do(req)
+	//response, _ := httpClient.Do(req)
+	//fmt.Println(response)
+	/*if err != nil {
 		dataChannel <- responseData{nil, err}
 	} else {
 		pack := responseData{response, err}
 		dataChannel <- pack
-	}
+	}*/
 }
 
 func initialization() {
 
 	rand.Seed(time.Now().Unix())
 	m.Init()
-	dataChannel = make(chan responseData, 2)
+	//dataChannel = make(chan responseData, 1)
 }
 
 func randomF64(min, max float64) float64 {
