@@ -24,7 +24,6 @@ const maxRandomValue float64 = 999.0
 type responseData struct {
 	r   *http.Response
 	err error
-	url string
 }
 
 var wg sync.WaitGroup
@@ -90,11 +89,10 @@ func parseAnswer(answer *responseData) {
 	defer resp.Body.Close()
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("Error read data:", responseBody)
 		fmt.Println("Error read data:", err)
 	}
-	//fmt.Println("Server Response: %s\n", responseBody)
-	fmt.Println("----------------------------", answer.url)
+
+	fmt.Printf("Server Response: %s\n", responseBody)
 }
 
 func doReqSendMetrics() {
@@ -118,9 +116,9 @@ func sendMetricEndpoint(endpoint string) {
 	httpClient := &http.Client{Transport: tr}
 	response, err := httpClient.Do(req)
 	if err != nil {
-		dataChannel <- responseData{nil, err, endpoint}
+		dataChannel <- responseData{nil, err}
 	} else {
-		pack := responseData{response, err, endpoint}
+		pack := responseData{response, err}
 		dataChannel <- pack
 	}
 }
