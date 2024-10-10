@@ -99,7 +99,7 @@ func doReqSendMetrics() {
 	for _, metric := range counters {
 		sendMetricEndpoint(tmp_url + metric.Name + "/" + fmt.Sprintf("%v", metric.Value))
 	}
-
+	tmp_url = url + "/update/" + "gauge/"
 	for _, metric := range gauges {
 		sendMetricEndpoint(tmp_url + metric.Name + "/" + fmt.Sprintf("%f", metric.Value))
 	}

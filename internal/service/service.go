@@ -14,28 +14,17 @@ type MetricService struct {
 
 func (s *MetricService) GetMetric(longURL string) (string, error) {
 
-	//repo := &repository{}
-	//temp_service := NewGetMetricService(repo)
-	//fmt.Println(temp_service)
+	r := &storage.MetricRepository{}
+	service := newGetMetricService(r)
+	service.repo.Get("any")
 
-	//mockRepo := &MockRepository{}
-	//service := NewShorterService(mockRepo)
+	/*mockRepo := &MockRepository{}
+	service1 := newGetMetricService(mockRepo)
+	service1.repo.Get("any")*/
 
-	return "temp_metric", nil
+	return "any", nil
 }
 
-func NewGetMetricService(repo storage.Repository) *MetricService {
+func newGetMetricService(repo storage.Repository) *MetricService {
 	return &MetricService{repo: repo}
-}
-
-type repository struct{}
-
-func (r *repository) Store(temp1, temp2 string) error {
-	//_, err := r.db.Exec("INSERT INTO urls (short_code, long_url) VALUES (?, ?)", shortCode, longURL)
-	return nil
-}
-
-func (r *repository) Get(temp string) (string, error) {
-	//_, err := r.db.Exec("INSERT INTO urls (short_code, long_url) VALUES (?, ?)", shortCode, longURL)
-	return "", nil
 }

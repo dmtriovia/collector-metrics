@@ -16,17 +16,11 @@ type metricHandler struct {
 	serv service.Service
 }
 
-func NewMetricHandler(serv service.Service) *metricHandler {
+func newMetricHandler(serv service.Service) *metricHandler {
 	return &metricHandler{serv: serv}
 }
 
 func DefaultHandler(w http.ResponseWriter, r *http.Request) {
-
-	temp_service := &service.MetricService{}
-	handler := NewMetricHandler(temp_service)
-	shortURL, err := handler.serv.GetMetric("без разницы что передаем")
-	fmt.Println(shortURL)
-	fmt.Println(err)
 
 	/*if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -37,6 +31,13 @@ func DefaultHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetMetricHandler(w http.ResponseWriter, r *http.Request) {
+
+	/*use in the future*/
+
+	/*s := &service.MetricService{}
+	handler := newMetricHandler(s)
+	temp, err := handler.serv.GetMetric("any")
+	fmt.Println(temp, err)*/
 
 	if !isValidContentType(r.Header.Get("Content-Type")) { // в middleware ?
 		w.WriteHeader(http.StatusBadRequest)
@@ -52,7 +53,7 @@ func GetMetricHandler(w http.ResponseWriter, r *http.Request) {
 	var mName string = r.PathValue("metric_name")
 	var mValue string = r.PathValue("metric_value")
 
-	if !isValidMeticName(mName) {
+	if !isValidMetricName(mName) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -113,7 +114,7 @@ func isValidMetricType(metricType string) bool {
 
 }
 
-func isValidMeticName(metricName string) bool {
+func isValidMetricName(metricName string) bool {
 
 	var pattern string = "^[a-zA-Z/ ]{1,20}$"
 
