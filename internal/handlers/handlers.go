@@ -38,17 +38,17 @@ func GetMetricHandler(w http.ResponseWriter, r *http.Request) {
 	handler := newMetricHandler(s)
 	temp, err := handler.serv.GetMetric("any")
 	fmt.Println(temp, err)*/
-
-	if !isValidContentType(r.Header.Get("Content-Type")) { // в middleware ?
+	if !isValidContentType(r.Header.Get("Content-Type")) { // in middleware ?
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	if !isMethodPost(r.Method) { // в middleware ?
+	if !isMethodPost(r.Method) { // in middleware ?
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
+	// INTO A SEPARATE VALIDATE FUNCTION ?
 	var mType string = r.PathValue("metric_type")
 	var mName string = r.PathValue("metric_name")
 	var mValue string = r.PathValue("metric_value")
@@ -62,6 +62,7 @@ func GetMetricHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	// INTO A SEPARATE VALIDATE FUNCTION ?
 
 	w.WriteHeader(http.StatusOK)
 	Body := "OK\n"
@@ -91,8 +92,8 @@ func isValidContentType(contentType string) bool {
 }
 
 func MatchString(pattern string, s string) (matched bool, err error) {
-	re, err := regexp.Compile(pattern)
 
+	re, err := regexp.Compile(pattern)
 	if err == nil {
 		return re.MatchString(s), nil
 	} else {

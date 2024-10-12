@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"math/rand"
 	"models"
 	"net/http"
@@ -21,14 +20,15 @@ const reportInterval int = 10
 const minRandomValue float64 = 1.0
 const maxRandomValue float64 = 999.0
 
-type responseData struct {
+/*type responseData struct {
 	r   *http.Response
 	err error
-}
+}*/
 
 var wg sync.WaitGroup
 var m models.Monitor
-var dataChannel chan responseData
+
+// var dataChannel chan responseData
 var gauges []models.Gauge
 var counters map[string]models.Counter
 
@@ -77,7 +77,7 @@ func sendMetrics() {
 	}
 }
 
-func parseAnswer(answer *responseData) {
+/*func parseAnswer(answer *responseData) {
 
 	err := answer.err
 	resp := answer.r
@@ -91,7 +91,7 @@ func parseAnswer(answer *responseData) {
 	}
 
 	fmt.Printf("Server Response: %s\n", responseBody)
-}
+}*/
 
 func doReqSendMetrics() {
 
@@ -110,7 +110,10 @@ func sendMetricEndpoint(endpoint string) {
 	req.Header.Set("Content-Type", contentTypeSendMetric)
 	tr := &http.Transport{}
 	httpClient := &http.Client{Transport: tr}
-	httpClient.Do(req)
+	_, err := httpClient.Do(req)
+	if err != nil {
+		fmt.Println(err)
+	}
 	//response, _ := httpClient.Do(req)
 	//fmt.Println(response)
 	/*if err != nil {
