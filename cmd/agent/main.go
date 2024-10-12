@@ -96,6 +96,7 @@ func sendMetrics() {
 func doReqSendMetrics() {
 
 	tmp_url := url + "/update/" + "counter/"
+	fmt.Println(counters)
 	for _, metric := range counters {
 		sendMetricEndpoint(tmp_url + metric.Name + "/" + fmt.Sprintf("%v", metric.Value))
 	}
@@ -141,8 +142,10 @@ func setValuesMonitor() {
 	runtime.ReadMemStats(&rtm)
 
 	m.PollCount.Value += 1
+
 	counters = make(map[string]models.Counter, 1)
 	counters["PollCount"] = m.PollCount
+	fmt.Println(counters["PollCount"])
 
 	gauges = make([]models.Gauge, 0, 27)
 

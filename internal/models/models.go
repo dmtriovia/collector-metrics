@@ -1,5 +1,7 @@
 package models
 
+import "fmt"
+
 type Gauge struct {
 	Name  string
 	Value float64
@@ -11,8 +13,23 @@ type Counter struct {
 }
 
 type MemStorage struct {
-	gauges   []Gauge
+	gauges   map[string]Gauge
 	counters map[string]Counter
+}
+
+func (m *MemStorage) Init() {
+	m.gauges = make(map[string]Gauge)
+	m.counters = make(map[string]Counter)
+}
+
+func (m *MemStorage) AddGauge(gauge *Gauge) {
+	m.gauges[gauge.Name] = *gauge
+}
+
+func (m *MemStorage) AddCounter(counter *Counter) {
+
+	m.counters[counter.Name] = *counter
+	fmt.Println(m.counters[counter.Name])
 }
 
 type Monitor struct {

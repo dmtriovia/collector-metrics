@@ -2,18 +2,25 @@ package handlers
 
 import (
 	"io"
+	"models"
 	"net/http"
 	"net/http/httptest"
+	"service"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetMetricHandler(t *testing.T) {
+var memStorage *models.MemStorage
+var serv *service.MetricService
 
+func TestSetMetricHandler(t *testing.T) {
+
+	memStorage.Init()
+	handler := NewAPIHandler(serv, memStorage)
 	// тип http.HandlerFunc реализует интерфейс http.Handler
 	// это поможет передать хендлер тестовому серверу
-	handler := http.HandlerFunc(GetMetricHandler)
+	//handler := http.HandlerFunc(SetMetricHandler)
 	// запускаем тестовый сервер, будет выбран первый свободный порт
 	srv := httptest.NewServer(handler)
 	// останавливаем сервер после завершения теста

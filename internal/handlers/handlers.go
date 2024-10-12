@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"models"
 	"net/http"
 	"regexp"
 	"service"
@@ -12,12 +13,23 @@ const PORT string = ":8080"
 const metrics string = "gauge|counter"
 const acceptedContentType string = "text/plain"
 
-type metricHandler struct {
-	serv service.Service
+type validMetric struct {
+	mtype        string
+	mname        string
+	mvalue       string
+	mvalue_float float64
+	mvalue_int   int64
 }
 
-func newMetricHandler(serv service.Service) *metricHandler {
-	return &metricHandler{serv: serv}
+var vMetric validMetric
+
+type APIHandler struct {
+	serv     service.Service
+	memStore *models.MemStorage
+}
+
+func NewAPIHandler(serv service.Service, memStore *models.MemStorage) *APIHandler {
+	return &APIHandler{serv: serv, memStore: memStore}
 }
 
 func DefaultHandler(w http.ResponseWriter, r *http.Request) {
@@ -30,44 +42,62 @@ func DefaultHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
 }
 
-func GetMetricHandler(w http.ResponseWriter, r *http.Request) {
+func (h *APIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {}
+
+func (h *APIHandler) SetMetricHandler(w http.ResponseWriter, r *http.Request) {
+
+	value, status := isValid(r)
+	if !value {
+		w.WriteHeader(status)
+		return
+	} else {
+		addMetricToMemStore(h.memStore)
+		w.WriteHeader(status)
+		Body := "OK\n"
+		fmt.Fprintf(w, "%s", Body)
+	}
 
 	/*use in the future*/
 
 	/*s := &service.MetricService{}
-	handler := newMetricHandler(s)
+	handler := newAPIHandler(s)
 	temp, err := handler.serv.GetMetric("any")
 	fmt.Println(temp, err)*/
-	if !isValidContentType(r.Header.Get("Content-Type")) { // in middleware ?
-		w.WriteHeader(http.StatusBadRequest)
-		return
+}
+
+func addMetricToMemStore(store *models.MemStorage) {
+	if vMetric.mtype == "gauge" {
+		store.AddGauge(&models.Gauge{Name: vMetric.mname, Value: vMetric.mvalue_float})
+
+	} else if vMetric.mtype == "counter" {
+		fmt.Println(vMetric.mvalue_int)
+		store.AddCounter(&models.Counter{Name: vMetric.mname, Value: vMetric.mvalue_int})
+	}
+}
+
+func isValid(r *http.Request) (bool, int) {
+
+	if !isValidContentType(r.Header.Get("Content-Type")) {
+		return false, http.StatusBadRequest
 	}
 
-	if !isMethodPost(r.Method) { // in middleware ?
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
+	if !isMethodPost(r.Method) {
+		return false, http.StatusMethodNotAllowed
 	}
 
-	// INTO A SEPARATE VALIDATE FUNCTION ?
-	var mType string = r.PathValue("metric_type")
-	var mName string = r.PathValue("metric_name")
-	var mValue string = r.PathValue("metric_value")
+	vMetric.mtype = r.PathValue("metric_type")
+	vMetric.mname = r.PathValue("metric_name")
+	vMetric.mvalue = r.PathValue("metric_value")
 
-	if !isValidMetricName(mName) {
-		w.WriteHeader(http.StatusNotFound)
-		return
+	if !isValidMetricName(vMetric.mname) {
+		return false, http.StatusNotFound
 	}
 
-	if !isValidMetricType(mType) || !isValidMeticValue(mValue, mType) {
-		w.WriteHeader(http.StatusBadRequest)
-		return
+	if !isValidMetricType(vMetric.mtype) || !isValidMeticValue(vMetric.mvalue, vMetric.mtype) {
+		return false, http.StatusBadRequest
 	}
-	// INTO A SEPARATE VALIDATE FUNCTION ?
 
-	w.WriteHeader(http.StatusOK)
-	Body := "OK\n"
-	fmt.Fprintf(w, "%s", Body)
-
+	return true, http.StatusOK
 }
 
 func isMethodPost(method string) bool {
@@ -131,7 +161,8 @@ func isValidMeticValue(metricValue string, metricType string) bool {
 
 	if metricType == "gauge" {
 
-		if _, err := strconv.ParseFloat(metricValue, 64); err == nil {
+		if value, err := strconv.ParseFloat(metricValue, 64); err == nil {
+			vMetric.mvalue_float = value
 			return true
 		} else {
 			return false
@@ -139,7 +170,8 @@ func isValidMeticValue(metricValue string, metricType string) bool {
 
 	} else if metricType == "counter" {
 
-		if _, err := strconv.ParseInt(metricValue, 10, 64); err == nil {
+		if value, err := strconv.ParseInt(metricValue, 10, 64); err == nil {
+			vMetric.mvalue_int = value
 			return true
 		} else {
 			return false
