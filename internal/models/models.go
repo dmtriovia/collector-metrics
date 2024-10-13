@@ -45,6 +45,20 @@ func (m *MemStorage) GetStringValueCounterMetric(name string) (string, error) {
 	}
 }
 
+func (m *MemStorage) GetMapStringsAllMetrics() *map[string]string {
+	mapMetrics := make(map[string]string)
+
+	for key, value := range m.counters {
+		mapMetrics[key] = fmt.Sprintf("%v", value.Value)
+	}
+
+	for key, value := range m.gauges {
+		mapMetrics[key] = fmt.Sprintf("%f", value.Value)
+	}
+
+	return &mapMetrics
+}
+
 func (m *MemStorage) AddGauge(gauge *Gauge) {
 	m.gauges[gauge.Name] = *gauge
 }

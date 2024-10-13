@@ -48,8 +48,10 @@ func MethodNotAllowedHandler(rw http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(rw, "%s", Body)
 }
 
-func DefaultHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotFound)
+func (h *setMetricHandler) DefaultHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	Body := getHTMLPageWithAllMetrics(h.memStore)
+	fmt.Fprintf(w, "%s", Body)
 }
 
 func (h *setMetricHandler) SetMetricHandler(w http.ResponseWriter, r *http.Request) {
@@ -251,4 +253,24 @@ func isValidMeticValue(metricValue string, metricType string) bool {
 	} else {
 		return false
 	}
+}
+
+func getHTMLPageWithAllMetrics(memStorage *models.MemStorage) string {
+
+	mapMetrics := memStorage.GetMapStringsAllMetrics()
+	var resultString = ""
+	var count int = 1
+
+	for key, value := range *mapMetrics {
+		resultString += `<div>` + fmt.Sprintf("%v", count) + `. Metric: ` + key + ` value: ` + value + `</div>`
+		count += 1
+	}
+
+	var form string = `<html>
+    <head>
+		<title></title>
+		</head>
+		<body>` + resultString + `</body>
+	</html>`
+	return form
 }

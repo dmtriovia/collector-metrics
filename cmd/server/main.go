@@ -57,7 +57,7 @@ func initialization() {
 	notAllowed := handlers.NotAllowedHandler{}
 	mux.MethodNotAllowedHandler = notAllowed
 
-	mux.NotFoundHandler = http.HandlerFunc(handlers.DefaultHandler)
+	mux.NotFoundHandler = http.HandlerFunc(handler.DefaultHandler)
 
 	s = &http.Server{
 		Addr:         handlers.PORT,
