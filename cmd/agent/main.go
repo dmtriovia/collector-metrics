@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -102,7 +103,7 @@ func doReqSendMetrics() {
 	}
 	tmp_url = url + "/update/" + "gauge/"
 	for _, metric := range gauges {
-		sendMetricEndpoint(tmp_url + metric.Name + "/" + fmt.Sprintf("%f", metric.Value))
+		sendMetricEndpoint(tmp_url + metric.Name + "/" + strconv.FormatFloat(metric.Value, 'f', -1, 64))
 	}
 }
 

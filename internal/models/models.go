@@ -3,6 +3,7 @@ package models
 import (
 	"errors"
 	"fmt"
+	"strconv"
 )
 
 type Gauge struct {
@@ -29,7 +30,7 @@ func (m *MemStorage) GetStringValueGaugeMetric(name string) (string, error) {
 
 	val, ok := m.gauges[name]
 	if ok {
-		return fmt.Sprintf("%f", val.Value), nil
+		return strconv.FormatFloat(val.Value, 'f', -1, 64), nil
 	} else {
 		return "", errors.New("Metric not found")
 	}
@@ -53,7 +54,7 @@ func (m *MemStorage) GetMapStringsAllMetrics() *map[string]string {
 	}
 
 	for key, value := range m.gauges {
-		mapMetrics[key] = fmt.Sprintf("%f", value.Value)
+		mapMetrics[key] = strconv.FormatFloat(value.Value, 'f', -1, 64)
 	}
 
 	return &mapMetrics
@@ -65,7 +66,15 @@ func (m *MemStorage) AddGauge(gauge *Gauge) {
 
 func (m *MemStorage) AddCounter(counter *Counter) {
 
-	m.counters[counter.Name] = *counter
+	val, ok := m.counters[counter.Name]
+	if ok {
+		var temp *Counter = new(Counter)
+		temp.Name = val.Name
+		temp.Value = val.Value + counter.Value
+		m.counters[counter.Name] = *temp
+	} else {
+		m.counters[counter.Name] = *counter
+	}
 }
 
 type Monitor struct {

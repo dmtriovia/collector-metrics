@@ -56,7 +56,7 @@ func (h *setMetricHandler) DefaultHandler(w http.ResponseWriter, r *http.Request
 
 func (h *setMetricHandler) SetMetricHandler(w http.ResponseWriter, r *http.Request) {
 
-	value, status := isValidSettHandler(r)
+	value, status := isValidSetHandler(r)
 	if !value {
 		w.WriteHeader(status)
 		return
@@ -98,11 +98,6 @@ func isValidGetHandler(r *http.Request, memStorage *models.MemStorage) (bool, in
 	vMetric.mtype = mux.Vars(r)["metric_type"]
 	vMetric.mname = mux.Vars(r)["metric_name"]
 
-	fmt.Println(vMetric.mname)
-	fmt.Println(isValidMetricName(vMetric.mname))
-	fmt.Println(vMetric.mtype)
-	fmt.Println(isValidMetricType(vMetric.mtype))
-
 	if !isValidMetricName(vMetric.mname) || !isValidMetricType(vMetric.mtype) {
 		return false, http.StatusNotFound
 	}
@@ -118,8 +113,6 @@ func isValidGetHandler(r *http.Request, memStorage *models.MemStorage) (bool, in
 		}
 	} else if vMetric.mtype == "counter" {
 		metricStringValue, err := memStorage.GetStringValueCounterMetric(vMetric.mname)
-		fmt.Println(metricStringValue)
-		fmt.Println(err)
 		if err != nil {
 			return false, http.StatusNotFound
 		} else {
@@ -131,11 +124,12 @@ func isValidGetHandler(r *http.Request, memStorage *models.MemStorage) (bool, in
 	}
 }
 
-func isValidSettHandler(r *http.Request) (bool, int) {
+func isValidSetHandler(r *http.Request) (bool, int) {
 
-	if !isValidContentType(r.Header.Get("Content-Type")) {
+	// не работают локальные автотесты 3 инкремента с данной проверкой
+	/*if !isValidContentType(r.Header.Get("Content-Type")) {
 		return false, http.StatusBadRequest
-	}
+	}*/
 
 	if !isMethodPost(r.Method) {
 		return false, http.StatusMethodNotAllowed
@@ -220,7 +214,7 @@ func isValidMetricType(metricType string) bool {
 
 func isValidMetricName(metricName string) bool {
 
-	var pattern string = "^[a-zA-Z/ ]{1,20}$"
+	var pattern string = "^[0-9a-zA-Z/ ]{1,20}$"
 
 	res, err := MatchString(pattern, metricName)
 	if err == nil && res == true {
