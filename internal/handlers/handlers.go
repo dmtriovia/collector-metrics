@@ -7,11 +7,15 @@ import (
 	"regexp"
 	"service"
 	"strconv"
+
+	"github.com/gorilla/mux"
 )
 
 const PORT string = ":8080"
 const metrics string = "gauge|counter"
 const acceptedContentType string = "text/plain"
+
+var vMetric validMetric
 
 type validMetric struct {
 	mtype        string
@@ -20,31 +24,35 @@ type validMetric struct {
 	mvalue_float float64
 	mvalue_int   int64
 }
-
-var vMetric validMetric
-
-type APIHandler struct {
+type setMetricHandler struct {
 	serv     service.Service
 	memStore *models.MemStorage
 }
 
-func NewAPIHandler(serv service.Service, memStore *models.MemStorage) *APIHandler {
-	return &APIHandler{serv: serv, memStore: memStore}
+type NotAllowedHandler struct{}
+
+func (h NotAllowedHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+	MethodNotAllowedHandler(rw, r)
+}
+
+func (h *setMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+}
+
+func NewSetMetricHandler(serv service.Service, memStore *models.MemStorage) *setMetricHandler {
+	return &setMetricHandler{serv: serv, memStore: memStore}
+}
+
+func MethodNotAllowedHandler(rw http.ResponseWriter, r *http.Request) {
+	rw.WriteHeader(http.StatusNotFound)
+	Body := "Method not allowed!\n"
+	fmt.Fprintf(rw, "%s", Body)
 }
 
 func DefaultHandler(w http.ResponseWriter, r *http.Request) {
-
-	/*if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}*/
-
 	w.WriteHeader(http.StatusNotFound)
 }
 
-func (h *APIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {}
-
-func (h *APIHandler) SetMetricHandler(w http.ResponseWriter, r *http.Request) {
+func (h *setMetricHandler) SetMetricHandler(w http.ResponseWriter, r *http.Request) {
 
 	value, status := isValid(r)
 	if !value {
@@ -55,12 +63,16 @@ func (h *APIHandler) SetMetricHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(status)
 		Body := "OK\n"
 		fmt.Fprintf(w, "%s", Body)
+		return
 	}
+}
+
+func (h *setMetricHandler) GetMetricHandler(w http.ResponseWriter, r *http.Request) {
 
 	/*use in the future*/
 
 	/*s := &service.MetricService{}
-	handler := newAPIHandler(s)
+	handler := NewGetMetricHandler(s)
 	temp, err := handler.serv.GetMetric("any")
 	fmt.Println(temp, err)*/
 }
@@ -70,7 +82,6 @@ func addMetricToMemStore(store *models.MemStorage) {
 		store.AddGauge(&models.Gauge{Name: vMetric.mname, Value: vMetric.mvalue_float})
 
 	} else if vMetric.mtype == "counter" {
-		fmt.Println(vMetric.mvalue_int)
 		store.AddCounter(&models.Counter{Name: vMetric.mname, Value: vMetric.mvalue_int})
 	}
 }
@@ -85,9 +96,9 @@ func isValid(r *http.Request) (bool, int) {
 		return false, http.StatusMethodNotAllowed
 	}
 
-	vMetric.mtype = r.PathValue("metric_type")
-	vMetric.mname = r.PathValue("metric_name")
-	vMetric.mvalue = r.PathValue("metric_value")
+	vMetric.mtype = mux.Vars(r)["metric_type"]
+	vMetric.mname = mux.Vars(r)["metric_name"]
+	vMetric.mvalue = mux.Vars(r)["metric_value"]
 
 	if !isValidMetricName(vMetric.mname) {
 		return false, http.StatusNotFound

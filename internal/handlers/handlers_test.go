@@ -8,25 +8,20 @@ import (
 	"service"
 	"testing"
 
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
 
-var memStorage *models.MemStorage
+var memStorage models.MemStorage
 var serv *service.MetricService
+
+const url string = "http://localhost:8080"
 
 func TestSetMetricHandler(t *testing.T) {
 
 	memStorage.Init()
-	handler := NewAPIHandler(serv, memStorage)
-	// тип http.HandlerFunc реализует интерфейс http.Handler
-	// это поможет передать хендлер тестовому серверу
-	//handler := http.HandlerFunc(SetMetricHandler)
-	// запускаем тестовый сервер, будет выбран первый свободный порт
-	srv := httptest.NewServer(handler)
-	// останавливаем сервер после завершения теста
-	defer srv.Close()
+	handler := NewSetMetricHandler(serv, &memStorage)
 
-	// описываем набор данных: метод запроса, ожидаемый код ответа, ожидаемое тело
 	testCases := []struct {
 		test_number   string
 		metric_method string
@@ -67,18 +62,20 @@ func TestSetMetricHandler(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(http.MethodPost, func(t *testing.T) {
 
-			req, err := http.NewRequest(tc.method, srv.URL+"/update/", nil)
+			req, err := http.NewRequest(tc.method, url+"/update/"+tc.metric_type+"/"+tc.metric_name+"/"+tc.metric_value, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			req.Header.Set("Content-Type", tc.contentType)
-			req.SetPathValue("metric_type", tc.metric_type)
-			req.SetPathValue("metric_name", tc.metric_name)
-			req.SetPathValue("metric_value", tc.metric_value)
+			//req.SetPathValue("metric_type", tc.metric_type)
+			//req.SetPathValue("metric_name", tc.metric_name)
+			//req.SetPathValue("metric_value", tc.metric_value)
 
 			rr := httptest.NewRecorder()
-			handler.ServeHTTP(rr, req)
+			router := mux.NewRouter()
+			router.HandleFunc("/update/{metric_type}/{metric_name}/{metric_value}", handler.SetMetricHandler)
+			router.ServeHTTP(rr, req)
 
 			status := rr.Code
 
