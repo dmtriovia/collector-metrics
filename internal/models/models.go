@@ -32,7 +32,7 @@ func (m *MemStorage) GetStringValueGaugeMetric(name string) (string, error) {
 	if ok {
 		return strconv.FormatFloat(val.Value, 'f', -1, 64), nil
 	} else {
-		return "", errors.New("Metric not found")
+		return "", errors.New("metric not found")
 	}
 
 }
@@ -42,7 +42,7 @@ func (m *MemStorage) GetStringValueCounterMetric(name string) (string, error) {
 	if ok {
 		return fmt.Sprintf("%v", val.Value), nil
 	} else {
-		return "", errors.New("Metric not found")
+		return "", errors.New("metric not found")
 	}
 }
 

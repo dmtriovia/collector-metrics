@@ -167,7 +167,7 @@ func getENV() error {
 		if isValidAddr(envRunAddr) {
 			options.PORT = envRunAddr
 		} else {
-			return errors.New("Addr is not valid")
+			return errors.New("addr is not valid")
 		}
 	}
 	if envReportInterval := os.Getenv("REPORT_INTERVAL"); envReportInterval != "" {
@@ -196,7 +196,7 @@ func parseFlags() error {
 	flag.Parse()
 
 	if !isValidAddr(options.PORT) {
-		return errors.New("Addr is not valid")
+		return errors.New("addr is not valid")
 	}
 	return nil
 }
