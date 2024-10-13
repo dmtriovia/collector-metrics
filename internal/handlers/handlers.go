@@ -214,7 +214,7 @@ func isValidMetricType(metricType string) bool {
 
 func isValidMetricName(metricName string) bool {
 
-	var pattern string = "^[0-9a-zA-Z/ ]{1,20}$"
+	var pattern string = "^[0-9a-zA-Z]{1,20}$"
 
 	res, err := MatchString(pattern, metricName)
 	if err == nil && res == true {
