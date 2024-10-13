@@ -1,6 +1,9 @@
 package models
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type Gauge struct {
 	Name  string
@@ -22,6 +25,26 @@ func (m *MemStorage) Init() {
 	m.counters = make(map[string]Counter)
 }
 
+func (m *MemStorage) GetStringValueGaugeMetric(name string) (string, error) {
+
+	val, ok := m.gauges[name]
+	if ok {
+		return fmt.Sprintf("%f", val.Value), nil
+	} else {
+		return "", errors.New("Metric not found")
+	}
+
+}
+
+func (m *MemStorage) GetStringValueCounterMetric(name string) (string, error) {
+	val, ok := m.counters[name]
+	if ok {
+		return fmt.Sprintf("%v", val.Value), nil
+	} else {
+		return "", errors.New("Metric not found")
+	}
+}
+
 func (m *MemStorage) AddGauge(gauge *Gauge) {
 	m.gauges[gauge.Name] = *gauge
 }
@@ -29,7 +52,6 @@ func (m *MemStorage) AddGauge(gauge *Gauge) {
 func (m *MemStorage) AddCounter(counter *Counter) {
 
 	m.counters[counter.Name] = *counter
-	fmt.Println(m.counters[counter.Name])
 }
 
 type Monitor struct {

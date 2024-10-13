@@ -54,7 +54,7 @@ func DefaultHandler(w http.ResponseWriter, r *http.Request) {
 
 func (h *setMetricHandler) SetMetricHandler(w http.ResponseWriter, r *http.Request) {
 
-	value, status := isValid(r)
+	value, status := isValidSettHandler(r)
 	if !value {
 		w.WriteHeader(status)
 		return
@@ -69,6 +69,16 @@ func (h *setMetricHandler) SetMetricHandler(w http.ResponseWriter, r *http.Reque
 
 func (h *setMetricHandler) GetMetricHandler(w http.ResponseWriter, r *http.Request) {
 
+	value, status := isValidGetHandler(r, h.memStore)
+	if !value {
+		w.WriteHeader(status)
+		return
+	} else {
+		w.WriteHeader(status)
+		Body := vMetric.mvalue
+		fmt.Fprintf(w, "%s", Body)
+		return
+	}
 	/*use in the future*/
 
 	/*s := &service.MetricService{}
@@ -77,16 +87,49 @@ func (h *setMetricHandler) GetMetricHandler(w http.ResponseWriter, r *http.Reque
 	fmt.Println(temp, err)*/
 }
 
-func addMetricToMemStore(store *models.MemStorage) {
-	if vMetric.mtype == "gauge" {
-		store.AddGauge(&models.Gauge{Name: vMetric.mname, Value: vMetric.mvalue_float})
+func isValidGetHandler(r *http.Request, memStorage *models.MemStorage) (bool, int) {
 
+	if !isMethodGet(r.Method) {
+		return false, http.StatusMethodNotAllowed
+	}
+
+	vMetric.mtype = mux.Vars(r)["metric_type"]
+	vMetric.mname = mux.Vars(r)["metric_name"]
+
+	fmt.Println(vMetric.mname)
+	fmt.Println(isValidMetricName(vMetric.mname))
+	fmt.Println(vMetric.mtype)
+	fmt.Println(isValidMetricType(vMetric.mtype))
+
+	if !isValidMetricName(vMetric.mname) || !isValidMetricType(vMetric.mtype) {
+		return false, http.StatusNotFound
+	}
+
+	if vMetric.mtype == "gauge" {
+		metricStringValue, err := memStorage.GetStringValueGaugeMetric(vMetric.mname)
+
+		if err != nil {
+			return false, http.StatusNotFound
+		} else {
+			vMetric.mvalue = metricStringValue
+			return true, http.StatusOK
+		}
 	} else if vMetric.mtype == "counter" {
-		store.AddCounter(&models.Counter{Name: vMetric.mname, Value: vMetric.mvalue_int})
+		metricStringValue, err := memStorage.GetStringValueCounterMetric(vMetric.mname)
+		fmt.Println(metricStringValue)
+		fmt.Println(err)
+		if err != nil {
+			return false, http.StatusNotFound
+		} else {
+			vMetric.mvalue = metricStringValue
+			return true, http.StatusOK
+		}
+	} else {
+		return false, http.StatusNotFound
 	}
 }
 
-func isValid(r *http.Request) (bool, int) {
+func isValidSettHandler(r *http.Request) (bool, int) {
 
 	if !isValidContentType(r.Header.Get("Content-Type")) {
 		return false, http.StatusBadRequest
@@ -111,8 +154,25 @@ func isValid(r *http.Request) (bool, int) {
 	return true, http.StatusOK
 }
 
+func addMetricToMemStore(store *models.MemStorage) {
+	if vMetric.mtype == "gauge" {
+		store.AddGauge(&models.Gauge{Name: vMetric.mname, Value: vMetric.mvalue_float})
+
+	} else if vMetric.mtype == "counter" {
+		store.AddCounter(&models.Counter{Name: vMetric.mname, Value: vMetric.mvalue_int})
+	}
+}
+
 func isMethodPost(method string) bool {
 	if method == http.MethodPost {
+		return true
+	} else {
+		return false
+	}
+}
+
+func isMethodGet(method string) bool {
+	if method == http.MethodGet {
 		return true
 	} else {
 		return false
