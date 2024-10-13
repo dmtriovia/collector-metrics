@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"handlers"
 	"log"
 	"middleware"
@@ -14,16 +15,21 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type Options struct {
+	PORT string
+}
+
 var memStorage models.MemStorage
 var s *http.Server
 var serv *service.MetricService
+var options Options
 
 func main() {
 
 	initialization()
 
 	go func() {
-		log.Println("Listening to", handlers.PORT)
+		log.Println("Listening to", ":"+options.PORT)
 		err := s.ListenAndServe()
 		if err != nil {
 			log.Printf("Error starting server: %s\n", err)
@@ -41,6 +47,7 @@ func main() {
 
 func initialization() {
 
+	parseFlags()
 	mux := mux.NewRouter()
 
 	memStorage.Init()
@@ -60,7 +67,7 @@ func initialization() {
 	mux.NotFoundHandler = http.HandlerFunc(handler.DefaultHandler)
 
 	s = &http.Server{
-		Addr:         handlers.PORT,
+		Addr:         options.PORT,
 		Handler:      mux,
 		ErrorLog:     nil,
 		ReadTimeout:  10 * time.Second,
@@ -68,4 +75,9 @@ func initialization() {
 		IdleTimeout:  30 * time.Second,
 	}
 
+}
+
+func parseFlags() {
+	flag.StringVar(&options.PORT, "a", "localhost:8080", "Port to listen on.")
+	flag.Parse()
 }

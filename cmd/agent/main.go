@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"math/rand"
 	"models"
@@ -14,12 +15,19 @@ import (
 	"time"
 )
 
-const url string = "http://localhost:8080"
+var url string = "http://"
+var pollInterval int = 2
+var reportInterval int = 10
+
 const contentTypeSendMetric string = "text/plain"
-const pollInterval int = 2
-const reportInterval int = 10
 const minRandomValue float64 = 1.0
 const maxRandomValue float64 = 999.0
+
+type Options struct {
+	PORT           string
+	reportInterval int
+	pollInterval   int
+}
 
 /*type responseData struct {
 	r   *http.Response
@@ -28,6 +36,7 @@ const maxRandomValue float64 = 999.0
 
 var wg sync.WaitGroup
 var m models.Monitor
+var options Options
 
 // var dataChannel chan responseData
 var gauges []models.Gauge
@@ -128,9 +137,20 @@ func sendMetricEndpoint(endpoint string) {
 
 func initialization() {
 
+	parseFlags()
+	url = url + options.PORT
+	pollInterval = options.pollInterval
+	reportInterval = options.reportInterval
 	rand.Seed(time.Now().Unix())
 	m.Init()
 	//dataChannel = make(chan responseData, 1)
+}
+
+func parseFlags() {
+	flag.StringVar(&options.PORT, "a", "localhost:8080", "Port to listen on.")
+	flag.IntVar(&options.pollInterval, "p", pollInterval, "Frequency of sending metrics to the server.")
+	flag.IntVar(&options.reportInterval, "r", reportInterval, "Frequency of polling metrics from the runtime package.")
+	flag.Parse()
 }
 
 func randomF64(min, max float64) float64 {
