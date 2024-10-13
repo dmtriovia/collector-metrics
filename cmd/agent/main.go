@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"math/rand"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
 	"runtime"
 	"strconv"
 	"sync"
@@ -18,6 +20,8 @@ import (
 var url string = "http://"
 var pollInterval int = 2
 var reportInterval int = 10
+
+const validateAdderPattern string = "^[a-zA-Z/ ]{1,100}:[0-9]{1,10}$"
 
 const contentTypeSendMetric string = "text/plain"
 const minRandomValue float64 = 1.0
@@ -44,7 +48,11 @@ var counters map[string]models.Counter
 
 func main() {
 
-	initialization()
+	err := initialization()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 	wg.Add(1)
 	go collectMetrics()
 	wg.Add(1)
@@ -135,22 +143,62 @@ func sendMetricEndpoint(endpoint string) {
 	}*/
 }
 
-func initialization() {
+func initialization() error {
 
-	parseFlags()
+	err := parseFlags()
+	if err != nil {
+		return err
+	}
+	err = getENV()
+	if err != nil {
+		return err
+	}
 	url = url + options.PORT
 	pollInterval = options.pollInterval
 	reportInterval = options.reportInterval
 	rand.Seed(time.Now().Unix())
 	m.Init()
 	//dataChannel = make(chan responseData, 1)
+	return nil
 }
 
-func parseFlags() {
+func getENV() error {
+	if envRunAddr := os.Getenv("ADDRESS"); envRunAddr != "" {
+		if isValidAddr(envRunAddr) {
+			options.PORT = envRunAddr
+		} else {
+			return errors.New("Addr is not valid")
+		}
+	}
+	if envReportInterval := os.Getenv("REPORT_INTERVAL"); envReportInterval != "" {
+		value, err := strconv.Atoi(envReportInterval)
+		if err != nil {
+			return err
+		} else {
+			options.reportInterval = value
+		}
+	}
+	if envPollInterval := os.Getenv("POLL_INTERVAL"); envPollInterval != "" {
+		value, err := strconv.Atoi(envPollInterval)
+		if err != nil {
+			return err
+		} else {
+			options.pollInterval = value
+		}
+	}
+	return nil
+}
+
+func parseFlags() error {
 	flag.StringVar(&options.PORT, "a", "localhost:8080", "Port to listen on.")
 	flag.IntVar(&options.pollInterval, "p", pollInterval, "Frequency of sending metrics to the server.")
 	flag.IntVar(&options.reportInterval, "r", reportInterval, "Frequency of polling metrics from the runtime package.")
 	flag.Parse()
+
+	if !isValidAddr(options.PORT) {
+		return errors.New("Addr is not valid")
+	}
+	return nil
 }
 
 func randomF64(min, max float64) float64 {
@@ -227,4 +275,28 @@ func setValuesMonitor() {
 	gauges = append(gauges, m.Sys)
 	gauges = append(gauges, m.TotalAlloc)
 	gauges = append(gauges, m.RandomValue)
+}
+
+func MatchString(pattern string, s string) (matched bool, err error) { //  in a separate package
+
+	re, err := regexp.Compile(pattern)
+	if err == nil {
+		return re.MatchString(s), nil
+	} else {
+		return false, err
+	}
+
+}
+
+func isValidAddr(addr string) bool { //  in a separate package
+
+	var pattern string = validateAdderPattern
+
+	res, err := MatchString(pattern, addr)
+	if err == nil && res == true {
+		return true
+	} else {
+		return false
+	}
+
 }

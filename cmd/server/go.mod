@@ -19,8 +19,8 @@ require middleware v0.0.0-00010101000000-000000000000
 require service v0.0.0-00010101000000-000000000000
 
 require (
-	github.com/gorilla/mux v1.8.1 // indirect
-	storage v0.0.0-00010101000000-000000000000 // indirect
+	github.com/gorilla/mux v1.8.1 
+	storage v0.0.0-00010101000000-000000000000
 )
 
 require models v0.0.0-00010101000000-000000000000

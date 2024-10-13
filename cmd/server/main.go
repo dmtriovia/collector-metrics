@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"flag"
+	"fmt"
 	"handlers"
 	"log"
 	"middleware"
@@ -9,11 +11,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
 	"service"
 	"time"
 
 	"github.com/gorilla/mux"
 )
+
+const validateAdderPattern string = "^[a-zA-Z/ ]{1,100}:[0-9]{1,10}$"
 
 type Options struct {
 	PORT string
@@ -26,7 +31,11 @@ var options Options
 
 func main() {
 
-	initialization()
+	err := initialization()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
 	go func() {
 		log.Println("Listening to", ":"+options.PORT)
@@ -45,9 +54,16 @@ func main() {
 	s.Shutdown(nil)
 }
 
-func initialization() {
+func initialization() error {
 
-	parseFlags()
+	err := parseFlags()
+	if err != nil {
+		return err
+	}
+	err = getENV()
+	if err != nil {
+		return err
+	}
 	mux := mux.NewRouter()
 
 	memStorage.Init()
@@ -75,9 +91,50 @@ func initialization() {
 		IdleTimeout:  30 * time.Second,
 	}
 
+	return nil
 }
 
-func parseFlags() {
+func parseFlags() error {
 	flag.StringVar(&options.PORT, "a", "localhost:8080", "Port to listen on.")
 	flag.Parse()
+
+	if !isValidAddr(options.PORT) {
+		return errors.New("Addr is not valid")
+	}
+	return nil
+}
+
+func getENV() error {
+	if envRunAddr := os.Getenv("ADDRESS"); envRunAddr != "" {
+		if isValidAddr(envRunAddr) {
+			options.PORT = envRunAddr
+		} else {
+			return errors.New("Addr is not valid")
+		}
+	}
+	return nil
+}
+
+func MatchString(pattern string, s string) (matched bool, err error) { //  in a separate package
+
+	re, err := regexp.Compile(pattern)
+	if err == nil {
+		return re.MatchString(s), nil
+	} else {
+		return false, err
+	}
+
+}
+
+func isValidAddr(addr string) bool { //  in a separate package
+
+	var pattern string = validateAdderPattern
+
+	res, err := MatchString(pattern, addr)
+	if err == nil && res == true {
+		return true
+	} else {
+		return false
+	}
+
 }

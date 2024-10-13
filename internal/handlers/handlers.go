@@ -199,7 +199,7 @@ func MatchString(pattern string, s string) (matched bool, err error) {
 
 }
 
-func isValidMetricType(metricType string) bool {
+func isValidMetricType(metricType string) bool { //  in a separate package
 
 	var pattern string = "^" + metrics + "$"
 
@@ -212,7 +212,7 @@ func isValidMetricType(metricType string) bool {
 
 }
 
-func isValidMetricName(metricName string) bool {
+func isValidMetricName(metricName string) bool { //  in a separate package
 
 	var pattern string = "^[0-9a-zA-Z/ ]{1,20}$"
 
