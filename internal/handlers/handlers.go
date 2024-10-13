@@ -49,7 +49,7 @@ func MethodNotAllowedHandler(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (h *setMetricHandler) DefaultHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusBadRequest)
+	w.WriteHeader(http.StatusNotFound)
 	Body := getHTMLPageWithAllMetrics(h.memStore)
 	fmt.Fprintf(w, "%s", Body)
 }
