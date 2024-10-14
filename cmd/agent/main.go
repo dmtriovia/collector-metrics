@@ -41,6 +41,7 @@ type Options struct {
 var wg sync.WaitGroup
 var m models.Monitor
 var options Options
+var httpClient *http.Client
 
 // var dataChannel chan responseData
 var gauges []models.Gauge
@@ -127,8 +128,6 @@ func doReqSendMetrics() {
 func sendMetricEndpoint(endpoint string) {
 	req, _ := http.NewRequest("POST", endpoint, nil)
 	req.Header.Set("Content-Type", contentTypeSendMetric)
-	tr := &http.Transport{}
-	httpClient := &http.Client{Transport: tr}
 	_, err := httpClient.Do(req)
 	if err != nil {
 		fmt.Println(err)
@@ -145,6 +144,8 @@ func sendMetricEndpoint(endpoint string) {
 
 func initialization() error {
 
+	tr := &http.Transport{}
+	httpClient = &http.Client{Transport: tr}
 	err := parseFlags()
 	if err != nil {
 		return err
