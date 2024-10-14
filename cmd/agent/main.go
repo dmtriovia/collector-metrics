@@ -26,6 +26,7 @@ const maxRandomValue float64 = 999.0
 	err error
 }*/
 
+var httpClient *http.Client
 var wg sync.WaitGroup
 var m models.Monitor
 
@@ -110,8 +111,6 @@ func doReqSendMetrics() {
 func sendMetricEndpoint(endpoint string) {
 	req, _ := http.NewRequest("POST", endpoint, nil)
 	req.Header.Set("Content-Type", contentTypeSendMetric)
-	tr := &http.Transport{}
-	httpClient := &http.Client{Transport: tr}
 	_, err := httpClient.Do(req)
 	if err != nil {
 		fmt.Println(err)
@@ -129,6 +128,8 @@ func sendMetricEndpoint(endpoint string) {
 func initialization() {
 
 	rand.Seed(time.Now().Unix())
+	tr := &http.Transport{}
+	httpClient = &http.Client{Transport: tr}
 	m.Init()
 	//dataChannel = make(chan responseData, 1)
 }
