@@ -32,6 +32,8 @@ var m models.Monitor
 var gauges []models.Gauge
 var counters map[string]models.Counter
 
+var httpClient *http.Client
+
 func main() {
 
 	initialization()
@@ -108,12 +110,11 @@ func doReqSendMetrics() {
 func sendMetricEndpoint(endpoint string) {
 	req, _ := http.NewRequest("POST", endpoint, nil)
 	req.Header.Set("Content-Type", contentTypeSendMetric)
-	tr := &http.Transport{}
-	httpClient := &http.Client{Transport: tr}
 	_, err := httpClient.Do(req)
 	if err != nil {
 		fmt.Println(err)
 	}
+
 	//response, _ := httpClient.Do(req)
 	//fmt.Println(response)
 	/*if err != nil {
@@ -127,6 +128,8 @@ func sendMetricEndpoint(endpoint string) {
 func initialization() {
 
 	rand.Seed(time.Now().Unix())
+	tr := &http.Transport{}
+	httpClient = &http.Client{Transport: tr}
 	m.Init()
 	//dataChannel = make(chan responseData, 1)
 }
