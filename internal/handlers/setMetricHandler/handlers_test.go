@@ -1,26 +1,27 @@
-package handlers
+package setMetricHandler
 
 import (
 	"io"
-	"models"
 	"net/http"
 	"net/http/httptest"
-	"service"
 	"testing"
+
+	"github.com/dmitrovia/collector-metrics/internal/service"
+	"github.com/dmitrovia/collector-metrics/internal/storage/memoryRepository"
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
 
-var memStorage models.MemStorage
-var serv *service.MetricService
-
 const url string = "http://localhost:8080"
 
 func TestSetMetricHandler(t *testing.T) {
 
+	var memStorage *memoryRepository.MemoryRepository = new(memoryRepository.MemoryRepository)
+	MemoryService := service.NewMemoryService(memStorage)
+
 	memStorage.Init()
-	handler := NewSetMetricHandler(serv, &memStorage)
+	handler := NewSetMetricHandler(MemoryService)
 
 	testCases := []struct {
 		test_number   string

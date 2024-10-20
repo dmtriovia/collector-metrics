@@ -1,0 +1,9 @@
+# See https://golangci-lint.run/usage/linters/
+
+linters:
+  enable-all: true
+  disable:
+    # Note: deprecated linters
+    - gomnd
+    - execinquery
+    - exportloopref

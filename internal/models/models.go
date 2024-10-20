@@ -1,11 +1,5 @@
 package models
 
-import (
-	"errors"
-	"fmt"
-	"strconv"
-)
-
 type Gauge struct {
 	Name  string
 	Value float64
@@ -14,67 +8,6 @@ type Gauge struct {
 type Counter struct {
 	Name  string
 	Value int64
-}
-
-type MemStorage struct {
-	gauges   map[string]Gauge
-	counters map[string]Counter
-}
-
-func (m *MemStorage) Init() {
-	m.gauges = make(map[string]Gauge)
-	m.counters = make(map[string]Counter)
-}
-
-func (m *MemStorage) GetStringValueGaugeMetric(name string) (string, error) {
-
-	val, ok := m.gauges[name]
-	if ok {
-		return strconv.FormatFloat(val.Value, 'f', -1, 64), nil
-	} else {
-		return "", errors.New("metric not found")
-	}
-
-}
-
-func (m *MemStorage) GetStringValueCounterMetric(name string) (string, error) {
-	val, ok := m.counters[name]
-	if ok {
-		return fmt.Sprintf("%v", val.Value), nil
-	} else {
-		return "", errors.New("metric not found")
-	}
-}
-
-func (m *MemStorage) GetMapStringsAllMetrics() *map[string]string {
-	mapMetrics := make(map[string]string)
-
-	for key, value := range m.counters {
-		mapMetrics[key] = fmt.Sprintf("%v", value.Value)
-	}
-
-	for key, value := range m.gauges {
-		mapMetrics[key] = strconv.FormatFloat(value.Value, 'f', -1, 64)
-	}
-
-	return &mapMetrics
-}
-
-func (m *MemStorage) AddGauge(gauge *Gauge) {
-	m.gauges[gauge.Name] = *gauge
-}
-
-func (m *MemStorage) AddCounter(counter *Counter) {
-
-	val, ok := m.counters[counter.Name]
-	if ok {
-		var temp *Counter = new(Counter)
-		temp.Name = val.Name
-		temp.Value = val.Value + counter.Value
-		m.counters[counter.Name] = *temp
-	} else {
-		m.counters[counter.Name] = *counter
-	}
 }
 
 type Monitor struct {
@@ -111,11 +44,6 @@ type Monitor struct {
 }
 
 func (m *Monitor) Init() {
-
-	//var users = [3]string{"Alloc", "TotalAlloc", "BuckHashSys"}
-	//for index, value := range users{
-	// f := reflect.Indirect(m).FieldByName(name)
-	//}
 
 	m.Alloc = Gauge{Name: "Alloc", Value: 0}
 	m.BuckHashSys = Gauge{Name: "BuckHashSys", Value: 0}

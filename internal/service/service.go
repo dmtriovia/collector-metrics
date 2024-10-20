@@ -1,30 +1,42 @@
 package service
 
 import (
-	"storage"
+	"github.com/dmitrovia/collector-metrics/internal/models"
+	"github.com/dmitrovia/collector-metrics/internal/storage"
 )
 
 type Service interface {
-	GetMetric(string) (string, error)
+	GetMapStringsAllMetrics() *map[string]string
+	AddGauge(mname string, mvalue float64)
+	AddCounter(mname string, mvalue int64)
+	GetStringValueGaugeMetric(mname string) (string, error)
+	GetStringValueCounterMetric(mname string) (string, error)
 }
 
-type MetricService struct {
-	repo storage.Repository
+type MemoryService struct {
+	repository storage.Repository
 }
 
-func (s *MetricService) GetMetric(longURL string) (string, error) {
-
-	r := &storage.MetricRepository{}
-	service := newGetMetricService(r)
-	service.repo.Get("any")
-
-	/*mockRepo := &MockRepository{}
-	service1 := newGetMetricService(mockRepo)
-	service1.repo.Get("any")*/
-
-	return "any", nil
+func (s *MemoryService) GetMapStringsAllMetrics() *map[string]string {
+	return s.repository.GetMapStringsAllMetrics()
 }
 
-func newGetMetricService(repo storage.Repository) *MetricService {
-	return &MetricService{repo: repo}
+func (s *MemoryService) AddGauge(mname string, mvalue float64) {
+	s.repository.AddGauge(&models.Gauge{Name: mname, Value: mvalue})
+}
+
+func (s *MemoryService) AddCounter(mname string, mvalue int64) {
+	s.repository.AddCounter(&models.Counter{Name: mname, Value: mvalue})
+}
+
+func (s *MemoryService) GetStringValueGaugeMetric(mname string) (string, error) {
+	return s.repository.GetStringValueGaugeMetric(mname)
+}
+
+func (s *MemoryService) GetStringValueCounterMetric(mname string) (string, error) {
+	return s.repository.GetStringValueCounterMetric(mname)
+}
+
+func NewMemoryService(repository storage.Repository) *MemoryService {
+	return &MemoryService{repository: repository}
 }
