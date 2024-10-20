@@ -10,7 +10,6 @@ on:
       - iter4
       - iter5
       - iter6
-  pull_request:
 
 permissions:
   contents: read
