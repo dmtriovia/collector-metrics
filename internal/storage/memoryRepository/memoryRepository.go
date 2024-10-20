@@ -3,6 +3,7 @@ package memoryRepository
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/dmitrovia/collector-metrics/internal/models"
 )
@@ -21,7 +22,7 @@ func (m *MemoryRepository) GetStringValueGaugeMetric(name string) (string, error
 
 	val, ok := m.gauges[name]
 	if ok {
-		return fmt.Sprintf("%.03f", val.Value), nil
+		return strconv.FormatFloat(val.Value, 'f', -1, 64), nil
 	} else {
 		return "", errors.New("metric not found")
 	}
@@ -45,7 +46,7 @@ func (m *MemoryRepository) GetMapStringsAllMetrics() *map[string]string {
 	}
 
 	for key, value := range m.gauges {
-		mapMetrics[key] = fmt.Sprintf("%.03f", value.Value)
+		mapMetrics[key] = strconv.FormatFloat(value.Value, 'f', -1, 64)
 	}
 
 	return &mapMetrics

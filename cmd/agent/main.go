@@ -96,7 +96,7 @@ func doReqSendMetrics(urlServer string, httpC *http.Client, inGauges *[]models.G
 	}
 	tmp_url = urlServer + "/update/" + "gauge/"
 	for _, metric := range *inGauges {
-		endpoints.SendMetricEndpoint(tmp_url+metric.Name+"/"+fmt.Sprintf("%.02f", metric.Value), httpC)
+		endpoints.SendMetricEndpoint(tmp_url+metric.Name+"/"+strconv.FormatFloat(metric.Value, 'f', -1, 64), httpC)
 	}
 }
 
