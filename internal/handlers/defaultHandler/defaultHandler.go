@@ -21,7 +21,7 @@ type ViewData struct {
 }
 
 func (h *defaultHandler) DefaultHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusNotFound)
 	data := ViewData{
 		Metrics: *h.serv.GetMapStringsAllMetrics(),
 	}
