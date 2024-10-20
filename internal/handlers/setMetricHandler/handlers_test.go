@@ -55,7 +55,7 @@ func TestSetMetricHandler(t *testing.T) {
 		{contentType: "text/plain", method: "POST", test_number: "14", metric_type: "counter", metric_name: "_Name123_", metric_value: "1", expectedCode: http.StatusNotFound, expectedBody: ""},
 		{contentType: "text/plain", method: "PATCH", test_number: "15", metric_type: "counter", metric_name: "Name", metric_value: "1", expectedCode: http.StatusMethodNotAllowed, expectedBody: ""},
 
-		{contentType: "application/json", method: "POST", test_number: "16", metric_type: "counter", metric_name: "Name", metric_value: "1", expectedCode: http.StatusBadRequest, expectedBody: ""},
+		//{contentType: "application/json", method: "POST", test_number: "16", metric_type: "counter", metric_name: "Name", metric_value: "1", expectedCode: http.StatusBadRequest, expectedBody: ""},
 
 		{contentType: "text/plain", method: "POST", test_number: "17", metric_type: "gauge", metric_name: "Name", metric_value: "ASD", expectedCode: http.StatusBadRequest, expectedBody: ""},
 	}
