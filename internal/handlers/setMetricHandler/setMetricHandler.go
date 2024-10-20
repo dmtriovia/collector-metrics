@@ -68,7 +68,7 @@ func addMetricToMemStore(h *setMetricHandler, inMetric *validMetric) {
 func isValidMetric(r *http.Request, inMetric *validMetric) (bool, int) {
 
 	// не работают локальные автотесты 3 инкремента с данной проверкой
-	res, _ = validate_f.IsMatchesTemplate(r.Header.Get("Content-Type"), acceptedContentType)
+	res, _ := validate_f.IsMatchesTemplate(r.Header.Get("Content-Type"), acceptedContentType)
 	if !res {
 		return false, http.StatusBadRequest
 	}
@@ -78,7 +78,7 @@ func isValidMetric(r *http.Request, inMetric *validMetric) (bool, int) {
 	}
 
 	var pattern string = "^[0-9a-zA-Z/ ]{1,20}$"
-	res, _ := validate_f.IsMatchesTemplate(inMetric.mname, pattern)
+	res, _ = validate_f.IsMatchesTemplate(inMetric.mname, pattern)
 
 	if !res {
 		return false, http.StatusNotFound
