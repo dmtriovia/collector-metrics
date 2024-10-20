@@ -14,7 +14,7 @@ type setMetricHandler struct {
 	serv service.Service
 }
 
-const acceptedContentType string = "text/plain"
+// const acceptedContentType string = "text/plain"
 const metrics string = "gauge|counter"
 
 type validMetric struct {
@@ -68,17 +68,17 @@ func addMetricToMemStore(h *setMetricHandler, inMetric *validMetric) {
 func isValidMetric(r *http.Request, inMetric *validMetric) (bool, int) {
 
 	// не работают локальные автотесты 3 инкремента с данной проверкой
-	res, _ := validate_f.IsMatchesTemplate(r.Header.Get("Content-Type"), acceptedContentType)
+	/*res, _ := validate_f.IsMatchesTemplate(r.Header.Get("Content-Type"), acceptedContentType)
 	if !res {
 		return false, http.StatusBadRequest
-	}
+	}*/
 
 	if !validate_f.IsMethodPost(r.Method) {
 		return false, http.StatusMethodNotAllowed
 	}
 
 	var pattern string = "^[0-9a-zA-Z/ ]{1,20}$"
-	res, _ = validate_f.IsMatchesTemplate(inMetric.mname, pattern)
+	res, _ := validate_f.IsMatchesTemplate(inMetric.mname, pattern)
 
 	if !res {
 		return false, http.StatusNotFound
