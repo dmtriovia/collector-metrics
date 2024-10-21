@@ -15,12 +15,18 @@ import (
 	"time"
 
 	"github.com/dmitrovia/collector-metrics/internal/endpoints"
-	"github.com/dmitrovia/collector-metrics/internal/functions/random_f"
-	"github.com/dmitrovia/collector-metrics/internal/functions/validate_f"
+	"github.com/dmitrovia/collector-metrics/internal/functions/random"
+	"github.com/dmitrovia/collector-metrics/internal/functions/validate"
 	"github.com/dmitrovia/collector-metrics/internal/models"
 )
 
-type initParameters struct {
+const defPollInterval = 2
+
+const defReportInterval = 10
+
+const metricGaugeCount = 27
+
+type initParams struct {
 	url                 string
 	PORT                string
 	reportInterval      int
@@ -29,14 +35,21 @@ type initParameters struct {
 }
 
 func main() {
+	var wg *sync.WaitGroup
+	wg = new(sync.WaitGroup)
 
-	var wg *sync.WaitGroup = new(sync.WaitGroup)
-	var monitor *models.Monitor = new(models.Monitor)
-	var httpClient *http.Client = new(http.Client)
-	var gauges *[]models.Gauge = new([]models.Gauge)
+	var monitor *models.Monitor
+	monitor = new(models.Monitor)
+
+	var httpClient *http.Client
+	httpClient = new(http.Client)
+
+	var gauges *[]models.Gauge
+	gauges = new([]models.Gauge)
+
 	var counters *map[string]models.Counter = new(map[string]models.Counter)
 
-	var params *initParameters = new(initParameters)
+	var params *initParams = new(initParams)
 	params.url = "http://"
 	params.reportInterval = 10
 	params.pollInterval = 2
@@ -47,33 +60,19 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+
 	wg.Add(1)
-	go collectMetrics(monitor, params, wg, gauges, counters)
+
+	go collect(monitor, params, wg, gauges, counters)
+
 	wg.Add(1)
-	go sendMetrics(params, wg, httpClient, gauges, counters)
+
+	go send(params, wg, httpClient, gauges, counters)
 	wg.Wait()
 }
 
-func collectMetrics(m *models.Monitor, params *initParameters, waitGroup *sync.WaitGroup, inGauges *[]models.Gauge, inCounters *map[string]models.Counter) {
-
-	defer waitGroup.Done()
-
-	channelCancel := make(chan os.Signal, 1)
-	signal.Notify(channelCancel, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
-
-	for {
-		select {
-		case <-channelCancel:
-			return
-		case <-time.After(time.Duration(params.pollInterval) * time.Second):
-			setValuesMonitor(m, inGauges, inCounters)
-		}
-	}
-}
-
-func sendMetrics(params *initParameters, waitGroup *sync.WaitGroup, httpC *http.Client, inGauges *[]models.Gauge, inCounters *map[string]models.Counter) {
-
-	defer waitGroup.Done()
+func collect(m *models.Monitor, p *initParams, wg *sync.WaitGroup, gs *[]models.Gauge, cs *map[string]models.Counter) {
+	defer wg.Done()
 
 	channelCancel := make(chan os.Signal, 1)
 	signal.Notify(channelCancel, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
@@ -82,37 +81,55 @@ func sendMetrics(params *initParameters, waitGroup *sync.WaitGroup, httpC *http.
 		select {
 		case <-channelCancel:
 			return
-		case <-time.After(time.Duration(params.reportInterval) * time.Second):
-			go doReqSendMetrics(params.url, httpC, inGauges, inCounters)
+		case <-time.After(time.Duration(p.pollInterval) * time.Second):
+			setValuesMonitor(m, gs, cs)
 		}
 	}
 }
 
-func doReqSendMetrics(urlServer string, httpC *http.Client, inGauges *[]models.Gauge, inCounters *map[string]models.Counter) {
+func send(p *initParams, wg *sync.WaitGroup, httpC *http.Client, gs *[]models.Gauge, cs *map[string]models.Counter) {
+	defer wg.Done()
 
-	tmp_url := urlServer + "/update/" + "counter/"
-	for _, metric := range *inCounters {
+	channelCancel := make(chan os.Signal, 1)
+	signal.Notify(channelCancel, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+
+	for {
+		select {
+		case <-channelCancel:
+			return
+		case <-time.After(time.Duration(p.reportInterval) * time.Second):
+			go doReqSendMetrics(p.url, httpC, gs, cs)
+		}
+	}
+}
+
+func doReqSendMetrics(url string, httpC *http.Client, gs *[]models.Gauge, cs *map[string]models.Counter) {
+	tmp_url := url + "/update/" + "counter/"
+	for _, metric := range *cs {
 		endpoints.SendMetricEndpoint(tmp_url+metric.Name+"/"+fmt.Sprintf("%v", metric.Value), httpC)
 	}
-	tmp_url = urlServer + "/update/" + "gauge/"
-	for _, metric := range *inGauges {
+
+	tmp_url = url + "/update/" + "gauge/"
+	for _, metric := range *gs {
 		endpoints.SendMetricEndpoint(tmp_url+metric.Name+"/"+strconv.FormatFloat(metric.Value, 'f', -1, 64), httpC)
 	}
 }
 
-func initialization(params *initParameters, httpC *http.Client, m *models.Monitor) error {
-
-	var err error = nil
+func initialization(params *initParams, httpC *http.Client, m *models.Monitor) error {
+	var err error
 
 	*httpC = http.Client{}
+
 	err = parseFlags(params)
 	if err != nil {
 		return err
 	}
+
 	err = getENV(params)
 	if err != nil {
 		return err
 	}
+
 	params.url = params.url + params.PORT
 	rand.Seed(time.Now().Unix())
 	m.Init()
@@ -120,22 +137,15 @@ func initialization(params *initParameters, httpC *http.Client, m *models.Monito
 	return err
 }
 
-func getENV(params *initParameters) error {
+func getENV(params *initParams) error {
+	var err error
 
-	var err error = nil
+	envRunAddr := os.Getenv("ADDRESS")
 
-	if envRunAddr := os.Getenv("ADDRESS"); envRunAddr != "" {
-		res, err := validate_f.IsMatchesTemplate(envRunAddr, params.validateAddrPattern)
-		if err != nil {
-			return nil
-		} else {
-			if res {
-				params.PORT = envRunAddr
-			} else {
-				return errors.New("addr is not valid")
-			}
-		}
+	if envRunAddr != "" {
+		addrIsValid(envRunAddr, params)
 	}
+
 	if envReportInterval := os.Getenv("REPORT_INTERVAL"); envReportInterval != "" {
 		value, err := strconv.Atoi(envReportInterval)
 		if err != nil {
@@ -144,6 +154,7 @@ func getENV(params *initParameters) error {
 			params.reportInterval = value
 		}
 	}
+
 	if envPollInterval := os.Getenv("POLL_INTERVAL"); envPollInterval != "" {
 		value, err := strconv.Atoi(envPollInterval)
 		if err != nil {
@@ -152,19 +163,34 @@ func getENV(params *initParameters) error {
 			params.pollInterval = value
 		}
 	}
+
 	return err
 }
 
-func parseFlags(params *initParameters) error {
+func addrIsValid(addr string, params *initParams) error {
+	res, err := validate.IsMatchesTemplate(addr, params.validateAddrPattern)
+	if err != nil {
+		return err
+	} else {
+		if res {
+			params.PORT = addr
+		} else {
+			return errors.New("addr is not valid")
+		}
+	}
 
-	var err error = nil
+	return err
+}
+
+func parseFlags(params *initParams) error {
+	var err error
 
 	flag.StringVar(&params.PORT, "a", "localhost:8080", "Port to listen on.")
-	flag.IntVar(&params.pollInterval, "p", 2, "Frequency of sending metrics to the server.")
-	flag.IntVar(&params.reportInterval, "r", 10, "Frequency of polling metrics from the runtime package.")
+	flag.IntVar(&params.pollInterval, "p", defPollInterval, "Frequency of sending metrics to the server.")
+	flag.IntVar(&params.reportInterval, "r", defReportInterval, "Frequency of polling metrics from the runtime package.")
 	flag.Parse()
 
-	res, err := validate_f.IsMatchesTemplate(params.PORT, params.validateAddrPattern)
+	res, err := validate.IsMatchesTemplate(params.PORT, params.validateAddrPattern)
 
 	if err != nil {
 		return nil
@@ -177,21 +203,37 @@ func parseFlags(params *initParameters) error {
 	return err
 }
 
-func setValuesMonitor(m *models.Monitor, inGauges *[]models.Gauge, inCounters *map[string]models.Counter) {
-
+func setValuesMonitor(m *models.Monitor, gs *[]models.Gauge, cs *map[string]models.Counter) {
 	const minRandomValue float64 = 1.0
+
 	const maxRandomValue float64 = 999.0
 
-	var rtm runtime.MemStats
-	runtime.ReadMemStats(&rtm)
-
+	writeFromMemory(m)
 	m.PollCount.Value += 1
 
 	tmpCounters := make(map[string]models.Counter, 1)
 	tmpCounters["PollCount"] = m.PollCount
 	fmt.Println(tmpCounters["PollCount"])
 
-	tmpGauges := make([]models.Gauge, 0, 27)
+	tmpGauges := make([]models.Gauge, 0, metricGaugeCount)
+
+	m.RandomValue.Value = random.RandomF64(minRandomValue, maxRandomValue)
+
+	tmpGauges = append(tmpGauges, m.Alloc, m.BuckHashSys, m.Frees, m.GCCPUFraction, m.GCSys)
+	tmpGauges = append(tmpGauges, m.HeapAlloc, m.HeapIdle, m.HeapInuse, m.HeapObjects, m.HeapReleased)
+	tmpGauges = append(tmpGauges, m.HeapSys, m.LastGC, m.Lookups, m.MCacheInuse, m.MCacheInuse)
+	tmpGauges = append(tmpGauges, m.MCacheSys, m.MSpanInuse, m.MSpanSys, m.Mallocs, m.NextGC)
+	tmpGauges = append(tmpGauges, m.NumForcedGC, m.NumGC, m.OtherSys, m.PauseTotalNs, m.StackInuse)
+	tmpGauges = append(tmpGauges, m.StackSys, m.Sys, m.TotalAlloc, m.RandomValue)
+
+	*gs = tmpGauges
+	*cs = tmpCounters
+}
+
+func writeFromMemory(m *models.Monitor) {
+	var rtm runtime.MemStats
+
+	runtime.ReadMemStats(&rtm)
 
 	m.Alloc.Value = float64(rtm.Alloc)
 	m.BuckHashSys.Value = float64(rtm.BuckHashSys)
@@ -220,12 +262,4 @@ func setValuesMonitor(m *models.Monitor, inGauges *[]models.Gauge, inCounters *m
 	m.StackSys.Value = float64(rtm.StackSys)
 	m.Sys.Value = float64(rtm.Sys)
 	m.TotalAlloc.Value = float64(rtm.TotalAlloc)
-	m.RandomValue.Value = random_f.RandomF64(minRandomValue, maxRandomValue)
-
-	tmpGauges = append(tmpGauges, m.Alloc, m.BuckHashSys, m.Frees, m.GCCPUFraction, m.GCSys, m.HeapAlloc, m.HeapIdle, m.HeapInuse, m.HeapObjects, m.HeapReleased)
-	tmpGauges = append(tmpGauges, m.HeapSys, m.LastGC, m.Lookups, m.MCacheInuse, m.MCacheInuse, m.MCacheSys, m.MSpanInuse, m.MSpanSys, m.Mallocs, m.NextGC)
-	tmpGauges = append(tmpGauges, m.NumForcedGC, m.NumGC, m.OtherSys, m.PauseTotalNs, m.StackInuse, m.StackSys, m.Sys, m.TotalAlloc, m.RandomValue)
-
-	*inGauges = tmpGauges
-	*inCounters = tmpCounters
 }

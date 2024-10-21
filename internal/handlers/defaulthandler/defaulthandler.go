@@ -1,4 +1,4 @@
-package defaultHandler
+package defaulthandler
 
 import (
 	"fmt"
@@ -12,8 +12,8 @@ type defaultHandler struct {
 	serv service.Service
 }
 
-func NewDefaultHandler(serv service.Service) *defaultHandler {
-	return &defaultHandler{serv: serv}
+func NewDefaultHandler(s service.Service) *defaultHandler {
+	return &defaultHandler{serv: s}
 }
 
 type ViewData struct {
@@ -22,9 +22,11 @@ type ViewData struct {
 
 func (h *defaultHandler) DefaultHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
+
 	data := ViewData{
 		Metrics: *h.serv.GetMapStringsAllMetrics(),
 	}
+
 	tmpl, err := template.ParseFiles("../../internal/html/allMetricsTemplate.html")
 	if err != nil {
 		fmt.Println(err)

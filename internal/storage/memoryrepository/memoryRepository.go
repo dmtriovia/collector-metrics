@@ -1,4 +1,4 @@
-package memoryRepository
+package memoryrepository
 
 import (
 	"errors"
@@ -19,14 +19,12 @@ func (m *MemoryRepository) Init() {
 }
 
 func (m *MemoryRepository) GetStringValueGaugeMetric(name string) (string, error) {
-
 	val, ok := m.gauges[name]
 	if ok {
 		return strconv.FormatFloat(val.Value, 'f', -1, 64), nil
 	} else {
 		return "", errors.New("metric not found")
 	}
-
 }
 
 func (m *MemoryRepository) GetStringValueCounterMetric(name string) (string, error) {
@@ -57,7 +55,6 @@ func (m *MemoryRepository) AddGauge(gauge *models.Gauge) {
 }
 
 func (m *MemoryRepository) AddCounter(counter *models.Counter) {
-
 	val, ok := m.counters[counter.Name]
 	if ok {
 		var temp *models.Counter = new(models.Counter)

@@ -44,7 +44,6 @@ type Monitor struct {
 }
 
 func (m *Monitor) Init() {
-
 	m.Alloc = Gauge{Name: "Alloc", Value: 0}
 	m.BuckHashSys = Gauge{Name: "BuckHashSys", Value: 0}
 	m.Frees = Gauge{Name: "Frees", Value: 0}

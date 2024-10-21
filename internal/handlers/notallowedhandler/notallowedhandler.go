@@ -1,4 +1,4 @@
-package notAllowedHandler
+package notallowedhandler
 
 import (
 	"fmt"
@@ -13,6 +13,7 @@ func (h NotAllowedHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 func MethodNotAllowedHandler(rw http.ResponseWriter, r *http.Request) {
 	rw.WriteHeader(http.StatusNotFound)
+
 	Body := "Method not allowed!\n"
 	fmt.Fprintf(rw, "%s", Body)
 }

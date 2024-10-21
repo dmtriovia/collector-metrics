@@ -11,33 +11,40 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/dmitrovia/collector-metrics/internal/functions/validate_f"
-	"github.com/dmitrovia/collector-metrics/internal/handlers/defaultHandler"
-	"github.com/dmitrovia/collector-metrics/internal/handlers/getMetricHandler"
-	"github.com/dmitrovia/collector-metrics/internal/handlers/notAllowedHandler"
-	"github.com/dmitrovia/collector-metrics/internal/handlers/setMetricHandler"
+	"github.com/dmitrovia/collector-metrics/internal/functions/validate"
+	"github.com/dmitrovia/collector-metrics/internal/handlers/defaulthandler"
+	"github.com/dmitrovia/collector-metrics/internal/handlers/getmetrichandler"
+	"github.com/dmitrovia/collector-metrics/internal/handlers/notallowedhandler"
+	"github.com/dmitrovia/collector-metrics/internal/handlers/setmetrichandler"
 	"github.com/dmitrovia/collector-metrics/internal/middleware"
 	"github.com/dmitrovia/collector-metrics/internal/service"
-	"github.com/dmitrovia/collector-metrics/internal/storage/memoryRepository"
-
+	"github.com/dmitrovia/collector-metrics/internal/storage/memoryrepository"
 	"github.com/gorilla/mux"
 )
 
-type initParameters struct {
+const rTimeout = 10
+
+const wTimeout = 10
+
+const iTimeout = 30
+
+type initParams struct {
 	PORT                string
 	validateAddrPattern string
 }
 
 func main() {
-
-	var memStorage *memoryRepository.MemoryRepository = new(memoryRepository.MemoryRepository)
-
-	var s *http.Server = new(http.Server)
+	var memStorage *memoryrepository.MemoryRepository
+	memStorage = new(memoryrepository.MemoryRepository)
 	MemoryService := service.NewMemoryService(memStorage)
-	var params *initParameters = new(initParameters)
+
+	var params *initParams
+	params = new(initParams)
 	params.validateAddrPattern = "^[a-zA-Z/ ]{1,100}:[0-9]{1,10}$"
 
-	err := initialization(params, memStorage, MemoryService, s)
+	var s *http.Server = new(http.Server)
+
+	err := initiate(params, memStorage, MemoryService, s)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -45,9 +52,11 @@ func main() {
 
 	go func() {
 		log.Println("Listening to", ":"+params.PORT)
+
 		err := s.ListenAndServe()
 		if err != nil {
 			log.Printf("Error starting server: %s\n", err)
+
 			return
 		}
 	}()
@@ -59,26 +68,28 @@ func main() {
 	s.Shutdown(context.TODO())
 }
 
-func initialization(params *initParameters, inMemStorage *memoryRepository.MemoryRepository, inService *service.MemoryService, inServer *http.Server) error {
+func initiate(p *initParams, mr *memoryrepository.MemoryRepository, ms *service.MemoryService, s *http.Server) error {
+	var err error
 
-	var err error = nil
-
-	err = parseFlags(params)
+	err = parseFlags(p)
 	if err != nil {
 		return err
 	}
-	err = getENV(params)
+
+	err = getENV(p)
 	if err != nil {
 		return err
 	}
 
 	mux := mux.NewRouter()
 
-	inMemStorage.Init()
-	handlerSet := setMetricHandler.NewSetMetricHandler(inService)
-	handlerGet := getMetricHandler.NewGetMetricHandler(inService)
-	handlerDefault := defaultHandler.NewDefaultHandler(inService)
-	handlerNotAllowed := notAllowedHandler.NotAllowedHandler{}
+	mr.Init()
+
+	handlerSet := setmetrichandler.NewSetMetricHandler(ms)
+
+	handlerGet := getmetrichandler.NewGetMetricHandler(ms)
+	handlerDefault := defaulthandler.NewDefaultHandler(ms)
+	handlerNotAllowed := notallowedhandler.NotAllowedHandler{}
 
 	postMux := mux.Methods(http.MethodPost).Subrouter()
 	postMux.HandleFunc("/update/{metric_type}/{metric_name}/{metric_value}", handlerSet.SetMetricHandler)
@@ -92,45 +103,56 @@ func initialization(params *initParameters, inMemStorage *memoryRepository.Memor
 
 	mux.NotFoundHandler = http.HandlerFunc(handlerDefault.DefaultHandler)
 
-	*inServer = http.Server{
-		Addr:         params.PORT,
+	*s = http.Server{
+		Addr:         p.PORT,
 		Handler:      mux,
 		ErrorLog:     nil,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  30 * time.Second,
+		ReadTimeout:  rTimeout * time.Second,
+		WriteTimeout: wTimeout * time.Second,
+		IdleTimeout:  iTimeout * time.Second,
 	}
 
 	return err
 }
 
-func parseFlags(params *initParameters) error {
+func parseFlags(params *initParams) error {
+	var err error
 
-	var err error = nil
 	flag.StringVar(&params.PORT, "a", "localhost:8080", "Port to listen on.")
 	flag.Parse()
 
-	res, err := validate_f.IsMatchesTemplate(params.PORT, params.validateAddrPattern)
+	res, err := validate.IsMatchesTemplate(params.PORT, params.validateAddrPattern)
+
 	if !res {
 		return errors.New("addr is not valid")
 	}
+
 	return err
 }
 
-func getENV(params *initParameters) error {
-	var err error = nil
-	if envRunAddr := os.Getenv("ADDRESS"); envRunAddr != "" {
-		res, err := validate_f.IsMatchesTemplate(envRunAddr, params.validateAddrPattern)
-		if err != nil {
-			return nil
-		} else {
-			if res {
-				params.PORT = envRunAddr
-			} else {
+func getENV(params *initParams) error {
+	var err error
 
-				return errors.New("addr is not valid")
-			}
+	envRunAddr := os.Getenv("ADDRESS")
+
+	if envRunAddr != "" {
+		addrIsValid(envRunAddr, params)
+	}
+
+	return err
+}
+
+func addrIsValid(addr string, params *initParams) error {
+	res, err := validate.IsMatchesTemplate(addr, params.validateAddrPattern)
+	if err != nil {
+		return err
+	} else {
+		if res {
+			params.PORT = addr
+		} else {
+			return errors.New("addr is not valid")
 		}
 	}
+
 	return err
 }
