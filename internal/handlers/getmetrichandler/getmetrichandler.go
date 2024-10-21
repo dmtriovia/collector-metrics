@@ -33,6 +33,8 @@ func (h *getMetricHandler) GetMetricHandler(writer http.ResponseWriter, req *htt
 
 	var answerData *ansData
 
+	valMetr = new(validMetric)
+
 	getReqData(req, valMetr)
 
 	isValid, status := isValidMetric(req, valMetr)
