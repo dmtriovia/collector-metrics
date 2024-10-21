@@ -8,13 +8,13 @@ import (
 func IsMatchesTemplate(addr string, pattern string) (bool, error) {
 	res, err := MatchString(pattern, addr)
 	if err != nil {
-		return false, nil
+		return false, err
 	} else {
 		return res, err
 	}
 }
 
-func MatchString(pattern string, s string) (matched bool, err error) {
+func MatchString(pattern string, s string) (bool, error) {
 	re, err := regexp.Compile(pattern)
 	if err == nil {
 		return re.MatchString(s), nil

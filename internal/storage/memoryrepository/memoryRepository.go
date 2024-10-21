@@ -2,7 +2,6 @@ package memoryrepository
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 
 	"github.com/dmitrovia/collector-metrics/internal/models"
@@ -22,25 +21,25 @@ func (m *MemoryRepository) GetStringValueGaugeMetric(name string) (string, error
 	val, ok := m.gauges[name]
 	if ok {
 		return strconv.FormatFloat(val.Value, 'f', -1, 64), nil
-	} else {
-		return "", errors.New("metric not found")
 	}
+
+	return "", errors.New("metric not found")
 }
 
 func (m *MemoryRepository) GetStringValueCounterMetric(name string) (string, error) {
 	val, ok := m.counters[name]
 	if ok {
-		return fmt.Sprintf("%v", val.Value), nil
-	} else {
-		return "", errors.New("metric not found")
+		return strconv.FormatInt(val.Value, 10), nil
 	}
+
+	return "", errors.New("metric not found")
 }
 
 func (m *MemoryRepository) GetMapStringsAllMetrics() *map[string]string {
 	mapMetrics := make(map[string]string)
 
 	for key, value := range m.counters {
-		mapMetrics[key] = fmt.Sprintf("%v", value.Value)
+		mapMetrics[key] = strconv.FormatInt(value.Value, 10)
 	}
 
 	for key, value := range m.gauges {
@@ -57,7 +56,9 @@ func (m *MemoryRepository) AddGauge(gauge *models.Gauge) {
 func (m *MemoryRepository) AddCounter(counter *models.Counter) {
 	val, ok := m.counters[counter.Name]
 	if ok {
-		var temp *models.Counter = new(models.Counter)
+		var temp *models.Counter
+
+		temp = new(models.Counter)
 		temp.Name = val.Name
 		temp.Value = val.Value + counter.Value
 		m.counters[counter.Name] = *temp

@@ -35,21 +35,25 @@ type initParams struct {
 }
 
 func main() {
-	var wg *sync.WaitGroup
-	wg = new(sync.WaitGroup)
+	var waitGroup *sync.WaitGroup
 
 	var monitor *models.Monitor
-	monitor = new(models.Monitor)
 
 	var httpClient *http.Client
-	httpClient = new(http.Client)
 
 	var gauges *[]models.Gauge
+
+	var counters *map[string]models.Counter
+
+	var params *initParams
+
+	waitGroup = new(sync.WaitGroup)
+	monitor = new(models.Monitor)
+	httpClient = new(http.Client)
 	gauges = new([]models.Gauge)
+	counters = new(map[string]models.Counter)
 
-	var counters *map[string]models.Counter = new(map[string]models.Counter)
-
-	var params *initParams = new(initParams)
+	params = new(initParams)
 	params.url = "http://"
 	params.reportInterval = 10
 	params.pollInterval = 2
@@ -61,17 +65,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	wg.Add(1)
+	waitGroup.Add(1)
 
-	go collect(monitor, params, wg, gauges, counters)
+	go collect(monitor, params, waitGroup, gauges, counters)
 
-	wg.Add(1)
+	waitGroup.Add(1)
 
-	go send(params, wg, httpClient, gauges, counters)
-	wg.Wait()
+	go send(params, waitGroup, httpClient, gauges, counters)
+	waitGroup.Wait()
 }
 
-func collect(m *models.Monitor, p *initParams, wg *sync.WaitGroup, gs *[]models.Gauge, cs *map[string]models.Counter) {
+func collect(mod *models.Monitor, par *initParams, wg *sync.WaitGroup, gauges *[]models.Gauge, counters *map[string]models.Counter) {
 	defer wg.Done()
 
 	channelCancel := make(chan os.Signal, 1)
@@ -81,13 +85,13 @@ func collect(m *models.Monitor, p *initParams, wg *sync.WaitGroup, gs *[]models.
 		select {
 		case <-channelCancel:
 			return
-		case <-time.After(time.Duration(p.pollInterval) * time.Second):
-			setValuesMonitor(m, gs, cs)
+		case <-time.After(time.Duration(par.pollInterval) * time.Second):
+			setValuesMonitor(mod, gauges, counters)
 		}
 	}
 }
 
-func send(p *initParams, wg *sync.WaitGroup, httpC *http.Client, gs *[]models.Gauge, cs *map[string]models.Counter) {
+func send(par *initParams, wg *sync.WaitGroup, httpC *http.Client, gauges *[]models.Gauge, counters *map[string]models.Counter) {
 	defer wg.Done()
 
 	channelCancel := make(chan os.Signal, 1)
@@ -97,25 +101,25 @@ func send(p *initParams, wg *sync.WaitGroup, httpC *http.Client, gs *[]models.Ga
 		select {
 		case <-channelCancel:
 			return
-		case <-time.After(time.Duration(p.reportInterval) * time.Second):
-			go doReqSendMetrics(p.url, httpC, gs, cs)
+		case <-time.After(time.Duration(par.reportInterval) * time.Second):
+			go doReqSendMetrics(par.url, httpC, gauges, counters)
 		}
 	}
 }
 
-func doReqSendMetrics(url string, httpC *http.Client, gs *[]models.Gauge, cs *map[string]models.Counter) {
-	tmp_url := url + "/update/" + "counter/"
-	for _, metric := range *cs {
-		endpoints.SendMetricEndpoint(tmp_url+metric.Name+"/"+fmt.Sprintf("%v", metric.Value), httpC)
+func doReqSendMetrics(url string, httpC *http.Client, gauges *[]models.Gauge, counters *map[string]models.Counter) {
+	tmpURL := url + "/update/" + "counter/"
+	for _, metric := range *counters {
+		endpoints.SendMetricEndpoint(tmpURL+metric.Name+"/"+strconv.FormatInt(metric.Value, 10), httpC)
 	}
 
-	tmp_url = url + "/update/" + "gauge/"
-	for _, metric := range *gs {
-		endpoints.SendMetricEndpoint(tmp_url+metric.Name+"/"+strconv.FormatFloat(metric.Value, 'f', -1, 64), httpC)
+	tmpURL = url + "/update/" + "gauge/"
+	for _, metric := range *gauges {
+		endpoints.SendMetricEndpoint(tmpURL+metric.Name+"/"+strconv.FormatFloat(metric.Value, 'f', -1, 64), httpC)
 	}
 }
 
-func initialization(params *initParams, httpC *http.Client, m *models.Monitor) error {
+func initialization(params *initParams, httpC *http.Client, mon *models.Monitor) error {
 	var err error
 
 	*httpC = http.Client{}
@@ -130,9 +134,9 @@ func initialization(params *initParams, httpC *http.Client, m *models.Monitor) e
 		return err
 	}
 
-	params.url = params.url + params.PORT
+	params.url += params.PORT
 	rand.Seed(time.Now().Unix())
-	m.Init()
+	mon.Init()
 
 	return err
 }
@@ -143,25 +147,28 @@ func getENV(params *initParams) error {
 	envRunAddr := os.Getenv("ADDRESS")
 
 	if envRunAddr != "" {
-		addrIsValid(envRunAddr, params)
+		err = addrIsValid(envRunAddr, params)
+		if err != nil {
+			return err
+		}
 	}
 
 	if envReportInterval := os.Getenv("REPORT_INTERVAL"); envReportInterval != "" {
 		value, err := strconv.Atoi(envReportInterval)
 		if err != nil {
 			return err
-		} else {
-			params.reportInterval = value
 		}
+
+		params.reportInterval = value
 	}
 
 	if envPollInterval := os.Getenv("POLL_INTERVAL"); envPollInterval != "" {
 		value, err := strconv.Atoi(envPollInterval)
 		if err != nil {
 			return err
-		} else {
-			params.pollInterval = value
 		}
+
+		params.pollInterval = value
 	}
 
 	return err
@@ -169,9 +176,7 @@ func getENV(params *initParams) error {
 
 func addrIsValid(addr string, params *initParams) error {
 	res, err := validate.IsMatchesTemplate(addr, params.validateAddrPattern)
-	if err != nil {
-		return err
-	} else {
+	if err == nil {
 		if res {
 			params.PORT = addr
 		} else {
@@ -192,74 +197,70 @@ func parseFlags(params *initParams) error {
 
 	res, err := validate.IsMatchesTemplate(params.PORT, params.validateAddrPattern)
 
-	if err != nil {
-		return nil
-	} else {
-		if !res {
-			return errors.New("addr is not valid")
-		}
+	if err == nil && !res {
+		return errors.New("addr is not valid")
 	}
 
 	return err
 }
 
-func setValuesMonitor(m *models.Monitor, gs *[]models.Gauge, cs *map[string]models.Counter) {
+func setValuesMonitor(mon *models.Monitor, gauges *[]models.Gauge, counters *map[string]models.Counter) {
 	const minRandomValue float64 = 1.0
 
 	const maxRandomValue float64 = 999.0
 
-	writeFromMemory(m)
-	m.PollCount.Value += 1
+	writeFromMemory(mon)
+
+	mon.PollCount.Value++
 
 	tmpCounters := make(map[string]models.Counter, 1)
-	tmpCounters["PollCount"] = m.PollCount
-	fmt.Println(tmpCounters["PollCount"])
+	tmpCounters["PollCount"] = mon.PollCount
 
 	tmpGauges := make([]models.Gauge, 0, metricGaugeCount)
 
-	m.RandomValue.Value = random.RandomF64(minRandomValue, maxRandomValue)
+	mon.RandomValue.Value = random.RandF64(minRandomValue, maxRandomValue)
 
-	tmpGauges = append(tmpGauges, m.Alloc, m.BuckHashSys, m.Frees, m.GCCPUFraction, m.GCSys)
-	tmpGauges = append(tmpGauges, m.HeapAlloc, m.HeapIdle, m.HeapInuse, m.HeapObjects, m.HeapReleased)
-	tmpGauges = append(tmpGauges, m.HeapSys, m.LastGC, m.Lookups, m.MCacheInuse, m.MCacheInuse)
-	tmpGauges = append(tmpGauges, m.MCacheSys, m.MSpanInuse, m.MSpanSys, m.Mallocs, m.NextGC)
-	tmpGauges = append(tmpGauges, m.NumForcedGC, m.NumGC, m.OtherSys, m.PauseTotalNs, m.StackInuse)
-	tmpGauges = append(tmpGauges, m.StackSys, m.Sys, m.TotalAlloc, m.RandomValue)
+	tmpGauges = append(tmpGauges, mon.Alloc, mon.BuckHashSys, mon.Frees, mon.GCCPUFraction, mon.GCSys)
+	tmpGauges = append(tmpGauges, mon.HeapAlloc, mon.HeapIdle, mon.HeapInuse, mon.HeapObjects, mon.HeapReleased)
+	tmpGauges = append(tmpGauges, mon.HeapSys, mon.LastGC, mon.Lookups, mon.MCacheInuse, mon.MCacheInuse)
+	tmpGauges = append(tmpGauges, mon.MCacheSys, mon.MSpanInuse, mon.MSpanSys, mon.Mallocs, mon.NextGC)
+	tmpGauges = append(tmpGauges, mon.NumForcedGC, mon.NumGC, mon.OtherSys, mon.PauseTotalNs, mon.StackInuse)
+	tmpGauges = append(tmpGauges, mon.StackSys, mon.Sys, mon.TotalAlloc, mon.RandomValue)
 
-	*gs = tmpGauges
-	*cs = tmpCounters
+	*gauges = tmpGauges
+	*counters = tmpCounters
 }
 
-func writeFromMemory(m *models.Monitor) {
+func writeFromMemory(mon *models.Monitor) {
 	var rtm runtime.MemStats
 
 	runtime.ReadMemStats(&rtm)
 
-	m.Alloc.Value = float64(rtm.Alloc)
-	m.BuckHashSys.Value = float64(rtm.BuckHashSys)
-	m.Frees.Value = float64(rtm.Frees)
-	m.GCCPUFraction.Value = rtm.GCCPUFraction
-	m.GCSys.Value = float64(rtm.GCSys)
-	m.HeapAlloc.Value = float64(rtm.HeapAlloc)
-	m.HeapIdle.Value = float64(rtm.HeapIdle)
-	m.HeapInuse.Value = float64(rtm.HeapInuse)
-	m.HeapObjects.Value = float64(rtm.HeapObjects)
-	m.HeapReleased.Value = float64(rtm.HeapReleased)
-	m.HeapSys.Value = float64(rtm.HeapSys)
-	m.LastGC.Value = float64(rtm.LastGC)
-	m.Lookups.Value = float64(rtm.Lookups)
-	m.MCacheInuse.Value = float64(rtm.MCacheInuse)
-	m.MCacheSys.Value = float64(rtm.MCacheSys)
-	m.MSpanInuse.Value = float64(rtm.MSpanInuse)
-	m.MSpanSys.Value = float64(rtm.MSpanSys)
-	m.Mallocs.Value = float64(rtm.Mallocs)
-	m.NextGC.Value = float64(rtm.NextGC)
-	m.NumForcedGC.Value = float64(rtm.NumForcedGC)
-	m.NumGC.Value = float64(rtm.NumGC)
-	m.OtherSys.Value = float64(rtm.OtherSys)
-	m.PauseTotalNs.Value = float64(rtm.PauseTotalNs)
-	m.StackInuse.Value = float64(rtm.StackInuse)
-	m.StackSys.Value = float64(rtm.StackSys)
-	m.Sys.Value = float64(rtm.Sys)
-	m.TotalAlloc.Value = float64(rtm.TotalAlloc)
+	mon.Alloc.Value = float64(rtm.Alloc)
+	mon.BuckHashSys.Value = float64(rtm.BuckHashSys)
+	mon.Frees.Value = float64(rtm.Frees)
+	mon.GCCPUFraction.Value = rtm.GCCPUFraction
+	mon.GCSys.Value = float64(rtm.GCSys)
+	mon.HeapAlloc.Value = float64(rtm.HeapAlloc)
+	mon.HeapIdle.Value = float64(rtm.HeapIdle)
+	mon.HeapInuse.Value = float64(rtm.HeapInuse)
+	mon.HeapObjects.Value = float64(rtm.HeapObjects)
+	mon.HeapReleased.Value = float64(rtm.HeapReleased)
+	mon.HeapSys.Value = float64(rtm.HeapSys)
+	mon.LastGC.Value = float64(rtm.LastGC)
+	mon.Lookups.Value = float64(rtm.Lookups)
+	mon.MCacheInuse.Value = float64(rtm.MCacheInuse)
+	mon.MCacheSys.Value = float64(rtm.MCacheSys)
+	mon.MSpanInuse.Value = float64(rtm.MSpanInuse)
+	mon.MSpanSys.Value = float64(rtm.MSpanSys)
+	mon.Mallocs.Value = float64(rtm.Mallocs)
+	mon.NextGC.Value = float64(rtm.NextGC)
+	mon.NumForcedGC.Value = float64(rtm.NumForcedGC)
+	mon.NumGC.Value = float64(rtm.NumGC)
+	mon.OtherSys.Value = float64(rtm.OtherSys)
+	mon.PauseTotalNs.Value = float64(rtm.PauseTotalNs)
+	mon.StackInuse.Value = float64(rtm.StackInuse)
+	mon.StackSys.Value = float64(rtm.StackSys)
+	mon.Sys.Value = float64(rtm.Sys)
+	mon.TotalAlloc.Value = float64(rtm.TotalAlloc)
 }

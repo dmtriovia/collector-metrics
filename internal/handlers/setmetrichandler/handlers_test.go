@@ -15,7 +15,7 @@ import (
 
 const url string = "http://localhost:8080"
 
-const ok int = http.StatusOK
+const stok int = http.StatusOK
 
 const nallwd int = http.StatusMethodNotAllowed
 
@@ -23,16 +23,21 @@ const nfnd int = http.StatusNotFound
 
 const bdreq int = http.StatusBadRequest
 
+const tmpstr string = "111111111111111111111111111111111111"
+
+const tmpstr1 string = "111111111111111111111111111111111111.0"
+
 func SetMetricHandler(t *testing.T) {
-	var memStorage *memoryrepository.MemoryRepository = new(memoryrepository.MemoryRepository)
+	var memStorage *memoryrepository.MemoryRepository
+
+	memStorage = new(memoryrepository.MemoryRepository)
+
 	MemoryService := service.NewMemoryService(memStorage)
+
 	memStorage.Init()
 
 	handler := setmetrichandler.NewSetMetricHandler(MemoryService)
 
-	var tmpstr string = "111111111111111111111111111111111111"
-
-	var tmpstr1 string = "111111111111111111111111111111111111.0"
 	testCases := []struct {
 		tn     string
 		mt     string
@@ -42,27 +47,27 @@ func SetMetricHandler(t *testing.T) {
 		exbody string
 		method string
 	}{
-		{method: "POST", tn: "1", mt: "gauge", mn: "Name", mv: "1.0", expcod: ok, exbody: ""},
-		{method: "POST", tn: "2", mt: "counter", mn: "Name", mv: "1", expcod: ok, exbody: ""},
-		{method: "POST", tn: "3", mt: "counter", mn: "Name", mv: "1", expcod: ok, exbody: ""},
+		{method: "POST", tn: "1", mt: "gauge", mn: "Name", mv: "1.0", expcod: stok, exbody: ""},
+		{method: "POST", tn: "2", mt: "counter", mn: "Name", mv: "1", expcod: stok, exbody: ""},
+		{method: "POST", tn: "3", mt: "counter", mn: "Name", mv: "1", expcod: stok, exbody: ""},
 		{method: "POST", tn: "4", mt: "counter_new", mn: "Name", mv: "1", expcod: bdreq, exbody: ""},
 		{method: "POST", tn: "5", mt: "counter", mn: "Name", mv: tmpstr, expcod: bdreq, exbody: ""},
-		{method: "POST", tn: "6", mt: "counter", mn: "Name", mv: "-1", expcod: ok, exbody: ""},
+		{method: "POST", tn: "6", mt: "counter", mn: "Name", mv: "-1", expcod: stok, exbody: ""},
 		{method: "POST", tn: "7", mt: "counter", mn: "Name", mv: "-1.0", expcod: bdreq, exbody: ""},
 		{method: "POST", tn: "8", mt: "counter", mn: "Name", mv: "-1.1", expcod: bdreq, exbody: ""},
-		{method: "POST", tn: "9", mt: "gauge", mn: "Name", mv: tmpstr1, expcod: ok, exbody: ""},
-		{method: "POST", tn: "10", mt: "gauge", mn: "Name", mv: "-1.0", expcod: ok, exbody: ""},
-		{method: "POST", tn: "11", mt: "gauge", mn: "Name", mv: "-1.5", expcod: ok, exbody: ""},
-		{method: "POST", tn: "12", mt: "gauge", mn: "Name", mv: "-1", expcod: ok, exbody: ""},
-		{method: "POST", tn: "13", mt: "gauge", mn: "Name", mv: "5", expcod: ok, exbody: ""},
+		{method: "POST", tn: "9", mt: "gauge", mn: "Name", mv: tmpstr1, expcod: stok, exbody: ""},
+		{method: "POST", tn: "10", mt: "gauge", mn: "Name", mv: "-1.0", expcod: stok, exbody: ""},
+		{method: "POST", tn: "11", mt: "gauge", mn: "Name", mv: "-1.5", expcod: stok, exbody: ""},
+		{method: "POST", tn: "12", mt: "gauge", mn: "Name", mv: "-1", expcod: stok, exbody: ""},
+		{method: "POST", tn: "13", mt: "gauge", mn: "Name", mv: "5", expcod: stok, exbody: ""},
 		{method: "POST", tn: "14", mt: "counter", mn: "_Name123_", mv: "1", expcod: nfnd, exbody: ""},
 		{method: "PATCH", tn: "15", mt: "counter", mn: "Name", mv: "1", expcod: nallwd, exbody: ""},
 		{method: "POST", tn: "17", mt: "gauge", mn: "Name", mv: "ASD", expcod: bdreq, exbody: ""},
 	}
 
-	for _, tc := range testCases {
+	for _, test := range testCases {
 		t.Run(http.MethodPost, func(t *testing.T) {
-			req, err := http.NewRequest(tc.method, url+"/update/"+tc.mt+"/"+tc.mn+"/"+tc.mv, nil)
+			req, err := http.NewRequest(test.method, url+"/update/"+test.mt+"/"+test.mn+"/"+test.mv, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -76,11 +81,11 @@ func SetMetricHandler(t *testing.T) {
 			status := rr.Code
 			body, _ := io.ReadAll(rr.Body)
 
-			assert.NoError(t, err, tc.tn+": error making HTTP request ")
-			assert.Equal(t, tc.expcod, status, tc.tn+": Response code didn't match expected")
+			assert.NoError(t, err, test.tn+": error making HTTP request ")
+			assert.Equal(t, test.expcod, status, test.tn+": Response code didn't match expected")
 
-			if tc.exbody != "" {
-				assert.JSONEq(t, tc.exbody, string(body))
+			if test.exbody != "" {
+				assert.JSONEq(t, test.exbody, string(body))
 			}
 		})
 	}

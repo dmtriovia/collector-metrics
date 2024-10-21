@@ -17,39 +17,36 @@ type setMetricHandler struct {
 const metrics string = "gauge|counter"
 
 type validMetric struct {
-	mtype        string
-	mname        string
-	mvalue       string
-	mvalue_float float64
-	mvalue_int   int64
+	mtype       string
+	mname       string
+	mvalue      string
+	mvalueFloat float64
+	mvalueInt   int64
 }
 
 func NewSetMetricHandler(serv service.Service) *setMetricHandler {
 	return &setMetricHandler{serv: serv}
 }
 
-func (h *setMetricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-}
+func (h *setMetricHandler) SetMetricHandler(writer http.ResponseWriter, req *http.Request) {
+	var valm *validMetric
 
-func (h *setMetricHandler) SetMetricHandler(w http.ResponseWriter, r *http.Request) {
-	var validMetric *validMetric = new(validMetric)
+	valm = new(validMetric)
 
-	getReqData(r, validMetric)
+	getReqData(req, valm)
 
-	isValid, status := isValidMetric(r, validMetric)
+	isValid, status := isValidMetric(req, valm)
 	if !isValid {
-		w.WriteHeader(status)
-
-		return
-	} else {
-		addMetricToMemStore(h, validMetric)
-		w.WriteHeader(status)
-
-		Body := "OK\n"
-		fmt.Fprintf(w, "%s", Body)
+		writer.WriteHeader(status)
 
 		return
 	}
+
+	addMetricToMemStore(h, valm)
+	writer.WriteHeader(status)
+
+	Body := "OK\n"
+	fmt.Fprintf(writer, "%s", Body)
 }
 
 func getReqData(r *http.Request, m *validMetric) {
@@ -60,32 +57,34 @@ func getReqData(r *http.Request, m *validMetric) {
 
 func addMetricToMemStore(h *setMetricHandler, m *validMetric) {
 	if m.mtype == "gauge" {
-		h.serv.AddGauge(m.mname, m.mvalue_float)
+		h.serv.AddGauge(m.mname, m.mvalueFloat)
 	} else if m.mtype == "counter" {
-		h.serv.AddCounter(m.mname, m.mvalue_int)
+		h.serv.AddCounter(m.mname, m.mvalueInt)
 	}
 }
 
-func isValidMetric(r *http.Request, m *validMetric) (bool, int) {
+func isValidMetric(r *http.Request, metric *validMetric) (bool, int) {
 	if !validate.IsMethodPost(r.Method) {
 		return false, http.StatusMethodNotAllowed
 	}
 
-	var pattern string = "^[0-9a-zA-Z/ ]{1,20}$"
-	res, _ := validate.IsMatchesTemplate(m.mname, pattern)
+	var pattern string
+
+	pattern = "^[0-9a-zA-Z/ ]{1,20}$"
+	res, _ := validate.IsMatchesTemplate(metric.mname, pattern)
 
 	if !res {
 		return false, http.StatusNotFound
 	}
 
 	pattern = "^" + metrics + "$"
-	res, _ = validate.IsMatchesTemplate(m.mtype, pattern)
+	res, _ = validate.IsMatchesTemplate(metric.mtype, pattern)
 
 	if !res {
 		return false, http.StatusBadRequest
 	}
 
-	if !isValidMeticValue(m) {
+	if !isValidMeticValue(metric) {
 		return false, http.StatusBadRequest
 	}
 
@@ -105,21 +104,21 @@ func isValidMeticValue(m *validMetric) bool {
 func isValidGaugeValue(m *validMetric) bool {
 	value, err := strconv.ParseFloat(m.mvalue, 64)
 	if err == nil {
-		m.mvalue_float = value
+		m.mvalueFloat = value
 
 		return true
-	} else {
-		return false
 	}
+
+	return false
 }
 
 func isValidCounterValue(m *validMetric) bool {
 	value, err := strconv.ParseInt(m.mvalue, 10, 64)
 	if err == nil {
-		m.mvalue_int = value
+		m.mvalueInt = value
 
 		return true
-	} else {
-		return false
 	}
+
+	return false
 }

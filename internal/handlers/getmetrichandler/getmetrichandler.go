@@ -28,33 +28,33 @@ func NewGetMetricHandler(s service.Service) *getMetricHandler {
 	return &getMetricHandler{serv: s}
 }
 
-func (h *getMetricHandler) GetMetricHandler(w http.ResponseWriter, r *http.Request) {
-	var validMetric *validMetric = new(validMetric)
+func (h *getMetricHandler) GetMetricHandler(writer http.ResponseWriter, req *http.Request) {
+	var valMetr *validMetric
 
-	getReqData(r, validMetric)
+	var answerData *ansData
 
-	isValid, status := isValidMetric(r, validMetric)
+	getReqData(req, valMetr)
+
+	isValid, status := isValidMetric(req, valMetr)
 	if !isValid {
-		w.WriteHeader(status)
+		writer.WriteHeader(status)
 
 		return
-	} else {
-		var answerData *ansData = new(ansData)
-		isSetAnsData, status := setAnswerData(validMetric, answerData, h)
-
-		if isSetAnsData {
-			w.WriteHeader(status)
-
-			Body := answerData.mvalue
-			fmt.Fprintf(w, "%s", Body)
-
-			return
-		} else {
-			w.WriteHeader(status)
-
-			return
-		}
 	}
+
+	answerData = new(ansData)
+	isSetAnsData, status := setAnswerData(valMetr, answerData, h)
+
+	if isSetAnsData {
+		writer.WriteHeader(status)
+
+		Body := answerData.mvalue
+		fmt.Fprintf(writer, "%s", Body)
+
+		return
+	}
+
+	writer.WriteHeader(status)
 }
 
 func getReqData(r *http.Request, metric *validMetric) {
@@ -67,7 +67,8 @@ func isValidMetric(r *http.Request, metric *validMetric) (bool, int) {
 		return false, http.StatusMethodNotAllowed
 	}
 
-	var pattern string = "^[0-9a-zA-Z/ ]{1,20}$"
+	var pattern string
+	pattern = "^[0-9a-zA-Z/ ]{1,20}$"
 	res, _ := validate.IsMatchesTemplate(metric.mname, pattern)
 
 	if !res {
@@ -86,9 +87,9 @@ func isValidMetric(r *http.Request, metric *validMetric) (bool, int) {
 
 func setAnswerData(metric *validMetric, ansd *ansData, h *getMetricHandler) (bool, int) {
 	if metric.mtype == "gauge" {
-		setValueByType(metric, ansd, h.serv.GetStringValueGaugeMetric)
+		return setValueByType(metric, ansd, h.serv.GetStringValueGaugeMetric)
 	} else if metric.mtype == "counter" {
-		setValueByType(metric, ansd, h.serv.GetStringValueCounterMetric)
+		return setValueByType(metric, ansd, h.serv.GetStringValueCounterMetric)
 	}
 
 	return false, http.StatusNotFound
@@ -96,12 +97,11 @@ func setAnswerData(metric *validMetric, ansd *ansData, h *getMetricHandler) (boo
 
 func setValueByType(metric *validMetric, ansd *ansData, getFunction func(string) (string, error)) (bool, int) {
 	metricStringValue, err := getFunction(metric.mname)
-
 	if err != nil {
 		return false, http.StatusNotFound
-	} else {
-		ansd.mvalue = metricStringValue
-
-		return true, http.StatusOK
 	}
+
+	ansd.mvalue = metricStringValue
+
+	return true, http.StatusOK
 }

@@ -35,16 +35,19 @@ type initParams struct {
 
 func main() {
 	var memStorage *memoryrepository.MemoryRepository
-	memStorage = new(memoryrepository.MemoryRepository)
-	MemoryService := service.NewMemoryService(memStorage)
 
 	var params *initParams
+
+	var server *http.Server
+
+	memStorage = new(memoryrepository.MemoryRepository)
+	MemoryService := service.NewMemoryService(memStorage)
+	server = new(http.Server)
+
 	params = new(initParams)
 	params.validateAddrPattern = "^[a-zA-Z/ ]{1,100}:[0-9]{1,10}$"
 
-	var s *http.Server = new(http.Server)
-
-	err := initiate(params, memStorage, MemoryService, s)
+	err := initiate(params, memStorage, MemoryService, server)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -53,7 +56,7 @@ func main() {
 	go func() {
 		log.Println("Listening to", ":"+params.PORT)
 
-		err := s.ListenAndServe()
+		err := server.ListenAndServe()
 		if err != nil {
 			log.Printf("Error starting server: %s\n", err)
 
@@ -65,30 +68,35 @@ func main() {
 	signal.Notify(sigs, os.Interrupt)
 	sig := <-sigs
 	log.Println("Quitting after signal:", sig)
-	s.Shutdown(context.TODO())
+
+	err = server.Shutdown(context.TODO())
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
 
-func initiate(p *initParams, mr *memoryrepository.MemoryRepository, ms *service.MemoryService, s *http.Server) error {
+func initiate(par *initParams, mrep *memoryrepository.MemoryRepository, mser *service.MemoryService, server *http.Server) error {
 	var err error
 
-	err = parseFlags(p)
+	err = parseFlags(par)
 	if err != nil {
 		return err
 	}
 
-	err = getENV(p)
+	err = getENV(par)
 	if err != nil {
 		return err
 	}
 
 	mux := mux.NewRouter()
 
-	mr.Init()
+	mrep.Init()
 
-	handlerSet := setmetrichandler.NewSetMetricHandler(ms)
+	handlerSet := setmetrichandler.NewSetMetricHandler(mser)
 
-	handlerGet := getmetrichandler.NewGetMetricHandler(ms)
-	handlerDefault := defaulthandler.NewDefaultHandler(ms)
+	handlerGet := getmetrichandler.NewGetMetricHandler(mser)
+	handlerDefault := defaulthandler.NewDefaultHandler(mser)
 	handlerNotAllowed := notallowedhandler.NotAllowedHandler{}
 
 	postMux := mux.Methods(http.MethodPost).Subrouter()
@@ -103,8 +111,8 @@ func initiate(p *initParams, mr *memoryrepository.MemoryRepository, ms *service.
 
 	mux.NotFoundHandler = http.HandlerFunc(handlerDefault.DefaultHandler)
 
-	*s = http.Server{
-		Addr:         p.PORT,
+	*server = http.Server{
+		Addr:         par.PORT,
 		Handler:      mux,
 		ErrorLog:     nil,
 		ReadTimeout:  rTimeout * time.Second,
@@ -136,7 +144,10 @@ func getENV(params *initParams) error {
 	envRunAddr := os.Getenv("ADDRESS")
 
 	if envRunAddr != "" {
-		addrIsValid(envRunAddr, params)
+		err = addrIsValid(envRunAddr, params)
+		if err != nil {
+			return err
+		}
 	}
 
 	return err
@@ -144,9 +155,7 @@ func getENV(params *initParams) error {
 
 func addrIsValid(addr string, params *initParams) error {
 	res, err := validate.IsMatchesTemplate(addr, params.validateAddrPattern)
-	if err != nil {
-		return err
-	} else {
+	if err == nil {
 		if res {
 			params.PORT = addr
 		} else {

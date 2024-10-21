@@ -31,6 +31,9 @@ func (h *defaultHandler) DefaultHandler(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		tmpl.Execute(w, data)
+		err = tmpl.Execute(w, data)
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 }
