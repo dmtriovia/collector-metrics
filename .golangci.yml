@@ -7,6 +7,7 @@ linters:
     - gomnd
     - execinquery
     - exportloopref
+    - forbidigo
     # gosimple
 
 linters-settings:
@@ -28,3 +29,22 @@ linters-settings:
   lll:
     line-length: 140
     tab-width: 1
+
+  wrapcheck:
+    ignoreSigs:
+      - .Errorf(
+      - errors.New(
+      - errors.Unwrap(
+      - errors.Join(
+      - .Wrap(
+      - .Wrapf(
+      - .WithMessage(
+      - .WithMessagef(
+      - .WithStack(
+    ignoreSigRegexps:
+      - \.New.*Error\(
+    ignorePackageGlobs:
+      - encoding/*
+      - github.com/pkg/*
+    ignoreInterfaceRegexps:
+      - ^(?i)c(?-i)ach(ing|e)

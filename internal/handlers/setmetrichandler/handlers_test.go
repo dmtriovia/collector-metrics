@@ -30,14 +30,6 @@ const tmpstr1 string = "111111111111111111111111111111111111.0"
 func SetMetricHandler(t *testing.T) {
 	var memStorage *memoryrepository.MemoryRepository
 
-	memStorage = new(memoryrepository.MemoryRepository)
-
-	MemoryService := service.NewMemoryService(memStorage)
-
-	memStorage.Init()
-
-	handler := setmetrichandler.NewSetMetricHandler(MemoryService)
-
 	testCases := []struct {
 		tn     string
 		mt     string
@@ -64,6 +56,12 @@ func SetMetricHandler(t *testing.T) {
 		{method: "PATCH", tn: "15", mt: "counter", mn: "Name", mv: "1", expcod: nallwd, exbody: ""},
 		{method: "POST", tn: "17", mt: "gauge", mn: "Name", mv: "ASD", expcod: bdreq, exbody: ""},
 	}
+
+	memStorage = new(memoryrepository.MemoryRepository)
+	MemoryService := service.NewMemoryService(memStorage)
+	memStorage.Init()
+
+	handler := setmetrichandler.NewSetMetricHandler(MemoryService)
 
 	for _, test := range testCases {
 		t.Run(http.MethodPost, func(t *testing.T) {

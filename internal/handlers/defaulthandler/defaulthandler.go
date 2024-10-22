@@ -20,8 +20,8 @@ type ViewData struct {
 	Metrics map[string]string
 }
 
-func (h *defaultHandler) DefaultHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotFound)
+func (h *defaultHandler) DefaultHandler(writer http.ResponseWriter, _ *http.Request) {
+	writer.WriteHeader(http.StatusNotFound)
 
 	data := ViewData{
 		Metrics: *h.serv.GetMapStringsAllMetrics(),
@@ -31,7 +31,7 @@ func (h *defaultHandler) DefaultHandler(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		err = tmpl.Execute(w, data)
+		err = tmpl.Execute(writer, data)
 		if err != nil {
 			fmt.Println(err)
 		}

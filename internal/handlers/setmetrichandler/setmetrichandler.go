@@ -31,6 +31,8 @@ func NewSetMetricHandler(serv service.Service) *setMetricHandler {
 func (h *setMetricHandler) SetMetricHandler(writer http.ResponseWriter, req *http.Request) {
 	var valm *validMetric
 
+	var Body string
+
 	valm = new(validMetric)
 
 	getReqData(req, valm)
@@ -45,7 +47,7 @@ func (h *setMetricHandler) SetMetricHandler(writer http.ResponseWriter, req *htt
 	addMetricToMemStore(h, valm)
 	writer.WriteHeader(status)
 
-	Body := "OK\n"
+	Body = "OK\n"
 	fmt.Fprintf(writer, "%s", Body)
 }
 

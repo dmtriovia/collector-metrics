@@ -28,6 +28,8 @@ const wTimeout = 10
 
 const iTimeout = 30
 
+var errParseFlags = errors.New("addr is not valid")
+
 type initParams struct {
 	PORT                string
 	validateAddrPattern string
@@ -101,11 +103,10 @@ func initiate(par *initParams, mrep *memoryrepository.MemoryRepository, mser *se
 
 	postMux := mux.Methods(http.MethodPost).Subrouter()
 	postMux.HandleFunc("/update/{metric_type}/{metric_name}/{metric_value}", handlerSet.SetMetricHandler)
-	postMux.Use(middleware.MiddlewareSetMetric)
+	postMux.Use(middleware.SetMetric)
 
 	getMux := mux.Methods(http.MethodGet).Subrouter()
 	getMux.HandleFunc("/value/{metric_type}/{metric_name}", handlerGet.GetMetricHandler)
-	getMux.Use(middleware.MiddlewareSetMetric)
 
 	mux.MethodNotAllowedHandler = handlerNotAllowed
 
@@ -132,7 +133,7 @@ func parseFlags(params *initParams) error {
 	res, err := validate.IsMatchesTemplate(params.PORT, params.validateAddrPattern)
 
 	if !res {
-		return errors.New("addr is not valid")
+		return errParseFlags
 	}
 
 	return err
@@ -159,7 +160,7 @@ func addrIsValid(addr string, params *initParams) error {
 		if res {
 			params.PORT = addr
 		} else {
-			return errors.New("addr is not valid")
+			return errParseFlags
 		}
 	}
 

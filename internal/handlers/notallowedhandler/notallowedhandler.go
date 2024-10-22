@@ -11,7 +11,7 @@ func (h NotAllowedHandler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	MethodNotAllowedHandler(rw, r)
 }
 
-func MethodNotAllowedHandler(rw http.ResponseWriter, r *http.Request) {
+func MethodNotAllowedHandler(rw http.ResponseWriter, _ *http.Request) {
 	rw.WriteHeader(http.StatusNotFound)
 
 	Body := "Method not allowed!\n"

@@ -20,11 +20,19 @@ import (
 	"github.com/dmitrovia/collector-metrics/internal/models"
 )
 
-const defPollInterval = 2
+const defPORT string = "localhost:8080"
 
-const defReportInterval = 10
+const defPollInterval int = 2
 
-const metricGaugeCount = 27
+const defReportInterval int = 10
+
+const metricGaugeCount int = 27
+
+var errGetENV = errors.New("REPORT_INTERVAL failed converting to int")
+
+var errGetENV1 = errors.New("POLL_INTERVAL failed converting to int")
+
+var errParseFlags = errors.New("addr is not valid")
 
 type initParams struct {
 	url                 string
@@ -156,7 +164,7 @@ func getENV(params *initParams) error {
 	if envReportInterval := os.Getenv("REPORT_INTERVAL"); envReportInterval != "" {
 		value, err := strconv.Atoi(envReportInterval)
 		if err != nil {
-			return err
+			return errGetENV
 		}
 
 		params.reportInterval = value
@@ -165,7 +173,7 @@ func getENV(params *initParams) error {
 	if envPollInterval := os.Getenv("POLL_INTERVAL"); envPollInterval != "" {
 		value, err := strconv.Atoi(envPollInterval)
 		if err != nil {
-			return err
+			return errGetENV1
 		}
 
 		params.pollInterval = value
@@ -180,7 +188,7 @@ func addrIsValid(addr string, params *initParams) error {
 		if res {
 			params.PORT = addr
 		} else {
-			return errors.New("addr is not valid")
+			return errParseFlags
 		}
 	}
 
@@ -190,24 +198,22 @@ func addrIsValid(addr string, params *initParams) error {
 func parseFlags(params *initParams) error {
 	var err error
 
-	flag.StringVar(&params.PORT, "a", "localhost:8080", "Port to listen on.")
+	flag.StringVar(&params.PORT, "a", defPORT, "Port to listen on.")
 	flag.IntVar(&params.pollInterval, "p", defPollInterval, "Frequency of sending metrics to the server.")
 	flag.IntVar(&params.reportInterval, "r", defReportInterval, "Frequency of polling metrics from the runtime package.")
 	flag.Parse()
 
 	res, err := validate.IsMatchesTemplate(params.PORT, params.validateAddrPattern)
 
-	if err == nil && !res {
-		return errors.New("addr is not valid")
+	if err != nil && !res {
+		return errParseFlags
 	}
 
 	return err
 }
 
 func setValuesMonitor(mon *models.Monitor, gauges *[]models.Gauge, counters *map[string]models.Counter) {
-	const minRandomValue float64 = 1.0
-
-	const maxRandomValue float64 = 999.0
+	const maxRandomValue int64 = 1000
 
 	writeFromMemory(mon)
 
@@ -218,7 +224,7 @@ func setValuesMonitor(mon *models.Monitor, gauges *[]models.Gauge, counters *map
 
 	tmpGauges := make([]models.Gauge, 0, metricGaugeCount)
 
-	mon.RandomValue.Value = random.RandF64(minRandomValue, maxRandomValue)
+	mon.RandomValue.Value = random.RandF64(maxRandomValue)
 
 	tmpGauges = append(tmpGauges, mon.Alloc, mon.BuckHashSys, mon.Frees, mon.GCCPUFraction, mon.GCSys)
 	tmpGauges = append(tmpGauges, mon.HeapAlloc, mon.HeapIdle, mon.HeapInuse, mon.HeapObjects, mon.HeapReleased)

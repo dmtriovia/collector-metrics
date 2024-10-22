@@ -7,6 +7,8 @@ import (
 	"github.com/dmitrovia/collector-metrics/internal/models"
 )
 
+var errGetStringValueCounterMetric = errors.New("addr is not valid")
+
 type MemoryRepository struct {
 	gauges   map[string]models.Gauge
 	counters map[string]models.Counter
@@ -23,7 +25,7 @@ func (m *MemoryRepository) GetStringValueGaugeMetric(name string) (string, error
 		return strconv.FormatFloat(val.Value, 'f', -1, 64), nil
 	}
 
-	return "", errors.New("metric not found")
+	return "", errGetStringValueCounterMetric
 }
 
 func (m *MemoryRepository) GetStringValueCounterMetric(name string) (string, error) {
@@ -32,7 +34,7 @@ func (m *MemoryRepository) GetStringValueCounterMetric(name string) (string, err
 		return strconv.FormatInt(val.Value, 10), nil
 	}
 
-	return "", errors.New("metric not found")
+	return "", errGetStringValueCounterMetric
 }
 
 func (m *MemoryRepository) GetMapStringsAllMetrics() *map[string]string {
@@ -55,9 +57,10 @@ func (m *MemoryRepository) AddGauge(gauge *models.Gauge) {
 
 func (m *MemoryRepository) AddCounter(counter *models.Counter) {
 	val, ok := m.counters[counter.Name]
-	if ok {
-		var temp *models.Counter
 
+	var temp *models.Counter
+
+	if ok {
 		temp = new(models.Counter)
 		temp.Name = val.Name
 		temp.Value = val.Value + counter.Value
