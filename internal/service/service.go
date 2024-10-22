@@ -1,6 +1,8 @@
 package service
 
 import (
+	"fmt"
+
 	"github.com/dmitrovia/collector-metrics/internal/models"
 	"github.com/dmitrovia/collector-metrics/internal/storage"
 )
@@ -30,11 +32,15 @@ func (s *MemoryService) AddCounter(mname string, mvalue int64) {
 }
 
 func (s *MemoryService) GetStringValueGaugeMetric(mname string) (string, error) {
-	return s.repository.GetStringValueGaugeMetric(mname)
+	val, err := s.repository.GetStringValueGaugeMetric(mname)
+
+	return val, fmt.Errorf("addrIsValid: %w", err)
 }
 
 func (s *MemoryService) GetStringValueCounterMetric(mname string) (string, error) {
-	return s.repository.GetStringValueCounterMetric(mname)
+	val, err := s.repository.GetStringValueCounterMetric(mname)
+
+	return val, fmt.Errorf("addrIsValid: %w", err)
 }
 
 func NewMemoryService(repository storage.Repository) *MemoryService {

@@ -125,18 +125,16 @@ func initiate(par *initParams, mrep *memoryrepository.MemoryRepository, mser *se
 }
 
 func parseFlags(params *initParams) error {
-	var err error
-
 	flag.StringVar(&params.PORT, "a", "localhost:8080", "Port to listen on.")
 	flag.Parse()
 
-	res, err := validate.IsMatchesTemplate(params.PORT, params.validateAddrPattern)
+	res, _ := validate.IsMatchesTemplate(params.PORT, params.validateAddrPattern)
 
 	if !res {
 		return errParseFlags
 	}
 
-	return err
+	return nil
 }
 
 func getENV(params *initParams) error {
@@ -166,5 +164,5 @@ func addrIsValid(addr string, params *initParams) error {
 		return fmt.Errorf("addrIsValid: %w", err)
 	}
 
-	return err
+	return nil
 }

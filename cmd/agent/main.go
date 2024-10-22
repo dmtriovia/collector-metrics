@@ -194,7 +194,7 @@ func addrIsValid(addr string, params *initParams) error {
 		return fmt.Errorf("addrIsValid: %w", err)
 	}
 
-	return err
+	return nil
 }
 
 func parseFlags(params *initParams) error {
@@ -211,7 +211,7 @@ func parseFlags(params *initParams) error {
 		return errParseFlags
 	}
 
-	return err
+	return nil
 }
 
 func setValuesMonitor(mon *models.Monitor, gauges *[]models.Gauge, counters *map[string]models.Counter) {
