@@ -13,6 +13,7 @@ func Intn(maximum int64) int64 {
 
 	return nBig.Int64()
 }
+
 func RandF64(maximum int64) float64 {
 	const shift = 53
 

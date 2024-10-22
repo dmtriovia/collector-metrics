@@ -1,14 +1,15 @@
 package endpoints
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 )
 
-func SendMetricEndpoint(endpoint string, httpC *http.Client) {
+func SendMetricEndpoint(ctx context.Context, endpoint string, httpC *http.Client) {
 	const contentTypeSendMetric string = "text/plain"
 
-	req, _ := http.NewRequest(http.MethodPost, endpoint, nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, nil)
 	req.Header.Set("Content-Type", contentTypeSendMetric)
 
 	resp, err := httpC.Do(req)

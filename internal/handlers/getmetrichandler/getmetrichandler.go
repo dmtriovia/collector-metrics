@@ -20,15 +20,15 @@ type ansData struct {
 	mvalue string
 }
 
-type getMetricHandler struct {
+type GetMetricHandler struct {
 	serv service.Service
 }
 
-func NewGetMetricHandler(s service.Service) *getMetricHandler {
-	return &getMetricHandler{serv: s}
+func NewGetMetricHandler(s service.Service) *GetMetricHandler {
+	return &GetMetricHandler{serv: s}
 }
 
-func (h *getMetricHandler) GetMetricHandler(writer http.ResponseWriter, req *http.Request) {
+func (h *GetMetricHandler) GetMetricHandler(writer http.ResponseWriter, req *http.Request) {
 	var valMetr *validMetric
 
 	var answerData *ansData
@@ -87,7 +87,7 @@ func isValidMetric(r *http.Request, metric *validMetric) (bool, int) {
 	return true, http.StatusOK
 }
 
-func setAnswerData(metric *validMetric, ansd *ansData, h *getMetricHandler) (bool, int) {
+func setAnswerData(metric *validMetric, ansd *ansData, h *GetMetricHandler) (bool, int) {
 	if metric.mtype == "gauge" {
 		return setValueByType(metric, ansd, h.serv.GetStringValueGaugeMetric)
 	} else if metric.mtype == "counter" {

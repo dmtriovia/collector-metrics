@@ -1,10 +1,10 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
@@ -118,12 +118,12 @@ func send(par *initParams, wg *sync.WaitGroup, httpC *http.Client, gauges *[]mod
 func doReqSendMetrics(url string, httpC *http.Client, gauges *[]models.Gauge, counters *map[string]models.Counter) {
 	tmpURL := url + "/update/" + "counter/"
 	for _, metric := range *counters {
-		endpoints.SendMetricEndpoint(tmpURL+metric.Name+"/"+strconv.FormatInt(metric.Value, 10), httpC)
+		endpoints.SendMetricEndpoint(context.Background(), tmpURL+metric.Name+"/"+strconv.FormatInt(metric.Value, 10), httpC)
 	}
 
 	tmpURL = url + "/update/" + "gauge/"
 	for _, metric := range *gauges {
-		endpoints.SendMetricEndpoint(tmpURL+metric.Name+"/"+strconv.FormatFloat(metric.Value, 'f', -1, 64), httpC)
+		endpoints.SendMetricEndpoint(context.Background(), tmpURL+metric.Name+"/"+strconv.FormatFloat(metric.Value, 'f', -1, 64), httpC)
 	}
 }
 
@@ -143,7 +143,7 @@ func initialization(params *initParams, httpC *http.Client, mon *models.Monitor)
 	}
 
 	params.url += params.PORT
-	rand.Seed(time.Now().Unix())
+
 	mon.Init()
 
 	return err
@@ -192,7 +192,7 @@ func addrIsValid(addr string, params *initParams) error {
 		}
 	}
 
-	return err
+	return fmt.Errorf("addrIsValid: %w", err)
 }
 
 func parseFlags(params *initParams) error {
@@ -209,7 +209,7 @@ func parseFlags(params *initParams) error {
 		return errParseFlags
 	}
 
-	return err
+	return fmt.Errorf("parseFlags: %w", err)
 }
 
 func setValuesMonitor(mon *models.Monitor, gauges *[]models.Gauge, counters *map[string]models.Counter) {

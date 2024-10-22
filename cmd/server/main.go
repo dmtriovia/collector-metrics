@@ -136,7 +136,7 @@ func parseFlags(params *initParams) error {
 		return errParseFlags
 	}
 
-	return err
+	return fmt.Errorf("parseFlags: %w", err)
 }
 
 func getENV(params *initParams) error {
@@ -164,5 +164,5 @@ func addrIsValid(addr string, params *initParams) error {
 		}
 	}
 
-	return err
+	return fmt.Errorf("addrIsValid: %w", err)
 }

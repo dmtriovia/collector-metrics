@@ -10,7 +10,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type setMetricHandler struct {
+type SetMetricHandler struct {
 	serv service.Service
 }
 
@@ -24,11 +24,11 @@ type validMetric struct {
 	mvalueInt   int64
 }
 
-func NewSetMetricHandler(serv service.Service) *setMetricHandler {
-	return &setMetricHandler{serv: serv}
+func NewSetMetricHandler(serv service.Service) *SetMetricHandler {
+	return &SetMetricHandler{serv: serv}
 }
 
-func (h *setMetricHandler) SetMetricHandler(writer http.ResponseWriter, req *http.Request) {
+func (h *SetMetricHandler) SetMetricHandler(writer http.ResponseWriter, req *http.Request) {
 	var valm *validMetric
 
 	var Body string
@@ -57,7 +57,7 @@ func getReqData(r *http.Request, m *validMetric) {
 	m.mvalue = mux.Vars(r)["metric_value"]
 }
 
-func addMetricToMemStore(h *setMetricHandler, m *validMetric) {
+func addMetricToMemStore(h *SetMetricHandler, m *validMetric) {
 	if m.mtype == "gauge" {
 		h.serv.AddGauge(m.mname, m.mvalueFloat)
 	} else if m.mtype == "counter" {

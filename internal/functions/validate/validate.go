@@ -1,6 +1,7 @@
 package validate
 
 import (
+	"fmt"
 	"net/http"
 	"regexp"
 )
@@ -20,7 +21,7 @@ func MatchString(pattern string, s string) (bool, error) {
 		return re.MatchString(s), nil
 	}
 
-	return false, err
+	return false, fmt.Errorf("MatchString: %w", err)
 }
 
 func IsMethodPost(method string) bool {
