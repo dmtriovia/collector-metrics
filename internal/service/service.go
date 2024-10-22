@@ -33,14 +33,20 @@ func (s *MemoryService) AddCounter(mname string, mvalue int64) {
 
 func (s *MemoryService) GetStringValueGaugeMetric(mname string) (string, error) {
 	val, err := s.repository.GetStringValueGaugeMetric(mname)
+	if err != nil {
+		return val, fmt.Errorf("addrIsValid: %w", err)
+	}
 
-	return val, fmt.Errorf("addrIsValid: %w", err)
+	return val, nil
 }
 
 func (s *MemoryService) GetStringValueCounterMetric(mname string) (string, error) {
 	val, err := s.repository.GetStringValueCounterMetric(mname)
+	if err != nil {
+		return val, fmt.Errorf("addrIsValid: %w", err)
+	}
 
-	return val, fmt.Errorf("addrIsValid: %w", err)
+	return val, nil
 }
 
 func NewMemoryService(repository storage.Repository) *MemoryService {
