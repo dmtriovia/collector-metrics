@@ -16,10 +16,12 @@ import (
 	"github.com/dmitrovia/collector-metrics/internal/handlers/getmetrichandler"
 	"github.com/dmitrovia/collector-metrics/internal/handlers/notallowedhandler"
 	"github.com/dmitrovia/collector-metrics/internal/handlers/setmetrichandler"
-	"github.com/dmitrovia/collector-metrics/internal/middleware"
+	"github.com/dmitrovia/collector-metrics/internal/logger"
+	"github.com/dmitrovia/collector-metrics/internal/middleware/requestmiddleware"
 	"github.com/dmitrovia/collector-metrics/internal/service"
 	"github.com/dmitrovia/collector-metrics/internal/storage/memoryrepository"
 	"github.com/gorilla/mux"
+	"go.uber.org/zap"
 )
 
 const rTimeout = 10
@@ -42,14 +44,26 @@ func main() {
 
 	var server *http.Server
 
+	var zapLogLevel string
+
 	memStorage = new(memoryrepository.MemoryRepository)
 	MemoryService := service.NewMemoryService(memStorage)
+	memStorage.Init()
+
 	server = new(http.Server)
 
 	params = new(initParams)
 	params.validateAddrPattern = "^[a-zA-Z/ ]{1,100}:[0-9]{1,10}$"
 
-	err := initiate(params, memStorage, MemoryService, server)
+	zapLogLevel = "info"
+
+	zapLogger, err := logger.Initialize(zapLogLevel)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = initiate(params, MemoryService, server, zapLogger)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -78,7 +92,7 @@ func main() {
 	}
 }
 
-func initiate(par *initParams, mrep *memoryrepository.MemoryRepository, mser *service.MemoryService, server *http.Server) error {
+func initiate(par *initParams, mser *service.MemoryService, server *http.Server, zapLogger *zap.Logger) error {
 	var err error
 
 	err = parseFlags(par)
@@ -93,8 +107,6 @@ func initiate(par *initParams, mrep *memoryrepository.MemoryRepository, mser *se
 
 	mux := mux.NewRouter()
 
-	mrep.Init()
-
 	handlerSet := setmetrichandler.NewSetMetricHandler(mser)
 
 	handlerGet := getmetrichandler.NewGetMetricHandler(mser)
@@ -103,10 +115,11 @@ func initiate(par *initParams, mrep *memoryrepository.MemoryRepository, mser *se
 
 	postMux := mux.Methods(http.MethodPost).Subrouter()
 	postMux.HandleFunc("/update/{metric_type}/{metric_name}/{metric_value}", handlerSet.SetMetricHandler)
-	postMux.Use(middleware.SetMetric)
+	postMux.Use(requestmiddleware.RequestLogger(zapLogger))
 
 	getMux := mux.Methods(http.MethodGet).Subrouter()
 	getMux.HandleFunc("/value/{metric_type}/{metric_name}", handlerGet.GetMetricHandler)
+	getMux.Use(requestmiddleware.RequestLogger(zapLogger))
 
 	mux.MethodNotAllowedHandler = handlerNotAllowed
 

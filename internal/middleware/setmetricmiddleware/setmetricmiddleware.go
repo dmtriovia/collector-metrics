@@ -1,4 +1,4 @@
-package middleware
+package setmetricmiddleware
 
 import "net/http"
 
