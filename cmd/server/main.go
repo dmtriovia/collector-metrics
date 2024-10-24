@@ -113,17 +113,19 @@ func initiate(par *initParams, mser *service.MemoryService, server *http.Server,
 	handlerDefault := defaulthandler.NewDefaultHandler(mser)
 	handlerNotAllowed := notallowedhandler.NotAllowedHandler{}
 
-	postMux := mux.Methods(http.MethodPost).Subrouter()
-	postMux.HandleFunc("/update/{metric_type}/{metric_name}/{metric_value}", handlerSet.SetMetricHandler)
-	postMux.Use(requestmiddleware.RequestLogger(zapLogger))
+	setMetricMux := mux.Methods(http.MethodPost).Subrouter()
+	setMetricMux.HandleFunc("/update/{metric_type}/{metric_name}/{metric_value}", handlerSet.SetMetricHandler)
+	setMetricMux.Use(requestmiddleware.RequestLogger(zapLogger))
 
-	getMux := mux.Methods(http.MethodGet).Subrouter()
-	getMux.HandleFunc("/value/{metric_type}/{metric_name}", handlerGet.GetMetricHandler)
-	getMux.Use(requestmiddleware.RequestLogger(zapLogger))
+	getMEtricMux := mux.Methods(http.MethodGet).Subrouter()
+	getMEtricMux.HandleFunc("/value/{metric_type}/{metric_name}", handlerGet.GetMetricHandler)
+	getMEtricMux.Use(requestmiddleware.RequestLogger(zapLogger))
 
 	mux.MethodNotAllowedHandler = handlerNotAllowed
 
-	mux.NotFoundHandler = http.HandlerFunc(handlerDefault.DefaultHandler)
+	defaultMux := mux.Methods(http.MethodGet).Subrouter()
+	defaultMux.HandleFunc("/", handlerDefault.DefaultHandler)
+	defaultMux.Use(requestmiddleware.RequestLogger(zapLogger))
 
 	*server = http.Server{
 		Addr:         par.PORT,
